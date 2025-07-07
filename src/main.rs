@@ -8,6 +8,7 @@ use config::Config;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::filter::LevelFilter;
 
+mod dto;
 mod error;
 mod config;
 
