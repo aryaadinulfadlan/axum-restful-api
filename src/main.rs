@@ -16,6 +16,7 @@ mod error;
 mod config;
 mod router;
 mod db;
+mod utils;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -27,7 +28,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_max_level(LevelFilter::DEBUG)
         .init();
-
+    
     dotenv().ok();
     let config = Config::init();
     let frontend_url = &config.frontend_url;
