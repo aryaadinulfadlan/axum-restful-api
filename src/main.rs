@@ -17,6 +17,7 @@ mod config;
 mod router;
 mod db;
 mod utils;
+mod modules;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
