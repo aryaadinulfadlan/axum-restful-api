@@ -2,7 +2,6 @@
 
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE INDEX users_email_idx ON users (email);
 
 CREATE TABLE IF NOT EXISTS users (
      id UUID NOT NULL PRIMARY KEY DEFAULT (uuid_generate_v4()),
@@ -15,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
      updated_at TIMESTAMPTZ DEFAULT NOW(),
      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
+CREATE INDEX users_email_idx ON users (email);
 
 INSERT INTO users (id, role_id, name, email, password, is_verified)
 VALUES
