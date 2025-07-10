@@ -24,3 +24,4 @@ tracing-subscriber = {version = "0.3.19"}
 lettre = "0.11.17"
 redis = {version = "0.32.3", features = ["tokio-comp"]}
 rand = "0.9.1"
+base64 = "0.22.1"

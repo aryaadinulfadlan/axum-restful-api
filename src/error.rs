@@ -61,7 +61,7 @@ impl ErrorMessage {
     fn get_message(&self) -> String {
         match self {
             ErrorMessage::ServerError => "Internal Server Error. Please try again later.".to_string(),
-            ErrorMessage::WrongCredentials => "Email or password is wrong.".to_string(),
+            ErrorMessage::WrongCredentials => "Your credentials is wrong.".to_string(),
             ErrorMessage::EmailExist => "A user with this email already exists.".to_string(),
             ErrorMessage::UserNoLongerExist => "User belonging to this token no longer exists.".to_string(),
             ErrorMessage::EmptyPassword => "Password cannot be empty.".to_string(),
