@@ -1,0 +1,67 @@
+use core::str;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+use crate::modules::user::model::User;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserResponse {
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    // pub role: String, todos
+    pub is_verified: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl UserResponse {
+    pub fn get_user_response(user: &User) -> Self {
+        Self {
+            id: user.id.to_string(),
+            name: user.name.to_owned(),
+            email: user.email.to_owned(),
+            is_verified: user.is_verified,
+            created_at: user.created_at.unwrap(),
+            updated_at: user.updated_at.unwrap(),
+        }
+    }
+    pub fn get_users_response(user: &[User]) -> Vec<Self> {
+        user.iter().map(Self::get_user_response).collect()
+    }
+}
+
+#[derive(Validate, Debug, Clone, Serialize, Deserialize)]
+pub struct UserUpdateRequest {
+    #[validate(length(
+        min = 4,
+        max = 20,
+        message = "Name must be between 4 and 20 characters"
+    ))]
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct UserListRequest {
+    #[validate(range(min = 1))]
+    pub page: Option<usize>,
+    #[validate(range(min = 1, max = 50))]
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Validate, Default, Clone, Serialize, Deserialize)]
+pub struct UserPasswordUpdateRequest {
+    #[validate(
+        length(min = 6, message = "new password must be at least 6 characters")
+    )]
+    pub new_password: String,
+    #[validate(
+        length(min = 6, message = "new password confirm must be at least 6 characters"),
+        must_match(other = "new_password", message="new passwords do not match")
+    )]
+    pub new_password_confirm: String,
+    #[validate(
+        length(min = 6, message = "Old password must be at least 6 characters")
+    )]
+    pub old_password: String,
+}
