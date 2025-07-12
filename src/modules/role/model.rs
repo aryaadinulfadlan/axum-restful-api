@@ -1,6 +1,9 @@
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Type};
+use sqlx::{FromRow, Type, Error as SqlxError, query_scalar};
+use uuid::Uuid;
+use crate::db::DBClient;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, Type, PartialEq)]
 #[sqlx(type_name = "role_type", rename_all = "lowercase")]
@@ -20,9 +23,37 @@ impl RoleType {
 
 #[derive(Debug, Deserialize, Serialize, FromRow, Type, Clone)]
 pub struct Role {
-    pub id: uuid::Uuid,
+    pub id: Uuid,
     pub name: RoleType,
     pub description: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[async_trait]
+pub trait RoleRepository {
+    async fn get_role_id_by_name(&self, name: RoleType) -> Result<Option<Uuid>, SqlxError>;
+    async fn get_role_name_by_id(&self, role_id: Uuid) -> Result<Option<RoleType>, SqlxError>;
+}
+
+#[async_trait]
+impl RoleRepository for DBClient {
+    async fn get_role_id_by_name(&self, name: RoleType) -> Result<Option<Uuid>, SqlxError> {
+        let role_id = query_scalar!(
+            r#"
+                SELECT id FROM roles WHERE name = $1;
+            "#,
+            name as RoleType,
+        ).fetch_optional(&self.pool).await?;
+        Ok(role_id)
+    }
+    async fn get_role_name_by_id(&self, role_id: Uuid) -> Result<Option<RoleType>, SqlxError> {
+        let role_name = query_scalar!(
+            r#"
+               SELECT name as "name: RoleType" FROM roles WHERE id = $1;
+            "#,
+            role_id,
+        ).fetch_optional(&self.pool).await?;
+        Ok(role_name)
+    }
 }

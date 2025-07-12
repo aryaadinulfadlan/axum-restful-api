@@ -1,7 +1,12 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json
+    extract::{
+        FromRequest, 
+        Request, 
+        rejection::JsonRejection
+    },
+    Json,
 };
 use serde::{Serialize};
 use std::{
@@ -10,6 +15,7 @@ use std::{
     collections::BTreeMap
 };
 use validator::ValidationErrors;
+use crate::dto::ErrorRouting;
 
 #[derive(Debug, PartialEq)]
 pub enum ErrorMessage {
@@ -192,5 +198,31 @@ impl FieldError {
     pub fn populate_errors(err: ValidationErrors) -> HttpError<ErrorPayload> {
         let errors = FieldError::collect_errors(err);
         HttpError::bad_request("Validation Errors", Some(ErrorPayload::ValidationErrors(errors)))
+    }
+}
+
+pub struct JsonParser<T>(pub T);
+
+impl<S, T> FromRequest<S> for JsonParser<T>
+where
+    Json<T>: FromRequest<S, Rejection = JsonRejection>,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, Json<ErrorRouting>);
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let (parts, body) = req.into_parts();
+        let req = Request::from_parts(parts, body);
+
+        match Json::<T>::from_request(req, state).await {
+            Ok(value) => Ok(Self(value.0)),
+            Err(rejection) => {
+                let payload = ErrorRouting{
+                    status: "error".to_string(),
+                    message: rejection.body_text(),
+                };
+                Err((rejection.status(), Json(payload)))
+            }
+        }
     }
 }

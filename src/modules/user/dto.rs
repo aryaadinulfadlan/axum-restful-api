@@ -2,32 +2,33 @@ use core::str;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-use crate::modules::user::model::User;
+use crate::modules::user::model::{User};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserResponse {
     pub id: String,
     pub name: String,
     pub email: String,
-    // pub role: String, todos
+    pub role: String,
     pub is_verified: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl UserResponse {
-    pub fn get_user_response(user: &User) -> Self {
+    pub fn get_user_response(user: &User, role: String) -> Self {
         Self {
             id: user.id.to_string(),
             name: user.name.to_owned(),
             email: user.email.to_owned(),
+            role,
             is_verified: user.is_verified,
             created_at: user.created_at.unwrap(),
             updated_at: user.updated_at.unwrap(),
         }
     }
-    pub fn get_users_response(user: &[User]) -> Vec<Self> {
-        user.iter().map(Self::get_user_response).collect()
+    pub fn get_users_response(users: &[User], role: &str) -> Vec<Self> {
+        users.iter().map(|user| Self::get_user_response(user, role.to_string())).collect()
     }
 }
 

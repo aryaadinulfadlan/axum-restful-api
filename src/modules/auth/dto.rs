@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 #[derive(Validate, Debug, Default, Clone, Serialize, Deserialize)]
-pub struct RegisterUserRequest {
+pub struct SignUpRequest {
     #[validate(length(
         min = 4,
-        max = 20,
-        message = "Name must be between 4 and 20 characters"
+        max = 50,
+        message = "Name must be between 4 and 50 characters"
     ))]
     pub name: String,
     #[validate(
@@ -19,9 +19,8 @@ pub struct RegisterUserRequest {
     )]
     pub password: String,
     #[validate(
-        length(min = 1, message = "Confirm Password is required"),
-        must_match(other = "password", message="passwords do not match")
+        length(min = 1, message = "Password Confirm is required"),
+        must_match(other = "password", message="Password Confirm is not match")
     )]
-    #[serde(rename = "passwordConfirm")]
     pub password_confirm: String,
 }
