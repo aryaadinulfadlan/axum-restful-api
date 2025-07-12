@@ -1,14 +1,17 @@
 use axum::{
-    http::StatusCode,
+    http::{StatusCode, request::Parts},
     response::{IntoResponse, Response},
     extract::{
         FromRequest, 
+        FromRequestParts,
+        Query,
         Request, 
+        Path,
         rejection::JsonRejection
     },
     Json,
 };
-use serde::{Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     error::Error,
@@ -202,7 +205,6 @@ impl FieldError {
 }
 
 pub struct JsonParser<T>(pub T);
-
 impl<S, T> FromRequest<S> for JsonParser<T>
 where
     Json<T>: FromRequest<S, Rejection = JsonRejection>,
@@ -212,9 +214,8 @@ where
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let (parts, body) = req.into_parts();
-        let req = Request::from_parts(parts, body);
-
-        match Json::<T>::from_request(req, state).await {
+        let req_body = Request::from_parts(parts, body);
+        match Json::<T>::from_request(req_body, state).await {
             Ok(value) => Ok(Self(value.0)),
             Err(rejection) => {
                 let payload = ErrorRouting{
@@ -222,6 +223,49 @@ where
                     message: rejection.body_text(),
                 };
                 Err((rejection.status(), Json(payload)))
+            }
+        }
+    }
+}
+
+pub struct QueryParser<T>(pub T);
+impl<S, T> FromRequestParts<S> for QueryParser<T>
+where
+    T: DeserializeOwned + Send + Sync,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, Json<ErrorRouting>);
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        println!("Parts =>> {:?}", parts);
+        match Query::<T>::from_request_parts(parts, state).await {
+            Ok(query) => Ok(Self(query.0)),
+            Err(rejection) => {
+                let payload = ErrorRouting {
+                    status: "error".to_string(),
+                    message: rejection.body_text(),
+                };
+                Err((rejection.status(), Json(payload)))
+            }
+        }
+    }
+}
+
+pub struct PathParser<T>(pub T);
+impl<S, T> FromRequestParts<S> for PathParser<T>
+where
+    T: DeserializeOwned + Send + Sync,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, Json<ErrorRouting>);
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        match Path::<T>::from_request_parts(parts, state).await {
+            Ok(value) => Ok(Self(value.0)),
+            Err(rejection) => {
+                let payload = ErrorRouting {
+                    status: "error".to_string(),
+                    message: rejection.to_string(),
+                };
+                Err((StatusCode::BAD_REQUEST, Json(payload)))
             }
         }
     }

@@ -24,3 +24,9 @@ pub struct SignUpRequest {
     )]
     pub password_confirm: String,
 }
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct VerifyAccountQuery {
+    #[validate(length(min = 1, message = "Token key is required."))]
+    pub token: String,
+}
