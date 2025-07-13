@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use validator::Validate;
 
-#[derive(Validate, Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct SignUpRequest {
     #[validate(length(
         min = 4,
@@ -25,12 +25,12 @@ pub struct SignUpRequest {
     pub password_confirm: String,
 }
 
-#[derive(Serialize, Deserialize, Validate)]
+#[derive(Deserialize, Validate)]
 pub struct VerifyAccountQuery {
     #[validate(length(min = 1, message = "Token key is required."))]
     pub token: String,
 }
-#[derive(Serialize, Deserialize, Validate)]
+#[derive(Deserialize, Validate)]
 pub struct ResendActivationRequest {
     #[validate(
         length(min = 1, message = "Email is required"),
@@ -38,7 +38,7 @@ pub struct ResendActivationRequest {
     )]
     pub email: String,
 }
-#[derive(Validate, Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct SignInRequest {
     #[validate(
         length(min = 1, message = "Email is required"),

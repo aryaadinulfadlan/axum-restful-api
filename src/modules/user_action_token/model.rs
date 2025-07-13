@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use sqlx::{FromRow, Type, Error as SqlxError, query_as};
 use uuid::Uuid;
 use crate::{db::DBClient, modules::user::model::User};
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, Type, PartialEq)]
+#[derive(Serialize, Type)]
 #[sqlx(type_name = "action_type")]
 pub enum ActionType {
     #[sqlx(rename = "verify-account")]
@@ -23,7 +23,7 @@ impl ActionType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, FromRow, Type, Clone)]
+#[derive(Serialize, FromRow, Type)]
 pub struct UserActionToken {
     pub id: Uuid,
     pub user_id: Uuid,

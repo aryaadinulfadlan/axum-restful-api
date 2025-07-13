@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use sqlx::{FromRow, Error as SqlxError, query_scalar};
 use uuid::Uuid;
 use crate::db::DBClient;
 
-#[derive(Debug, Deserialize, Serialize, FromRow, Clone)]
+#[derive(Serialize, FromRow)]
 pub struct Permission {
     pub id: Uuid,
     pub name: String,

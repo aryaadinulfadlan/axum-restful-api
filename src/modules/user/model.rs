@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Serialize, FromRow, Clone)]
+#[derive(Serialize, FromRow, Clone)]
 pub struct User {
     pub id: Uuid,
     pub role_id: Uuid,
@@ -24,7 +24,7 @@ pub struct User {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct SignInResponse {
     pub user: UserResponse,
     pub token: String,

@@ -1,10 +1,10 @@
 use core::str;
 use chrono::{DateTime, Utc};
-use serde::{Serialize};
+use serde::{Deserialize, Serialize};
 use validator::Validate;
 use crate::modules::user::model::{User};
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct UserResponse {
     pub id: String,
     pub name: String,
@@ -32,7 +32,7 @@ impl UserResponse {
     }
 }
 
-#[derive(Validate, Debug, Clone, Serialize)]
+#[derive(Deserialize, Validate)]
 pub struct UserUpdateRequest {
     #[validate(length(
         min = 4,
@@ -42,7 +42,7 @@ pub struct UserUpdateRequest {
     pub name: String,
 }
 
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Validate)]
 pub struct UserListRequest {
     #[validate(range(min = 1))]
     pub page: Option<usize>,
@@ -50,7 +50,7 @@ pub struct UserListRequest {
     pub limit: Option<usize>,
 }
 
-#[derive(Debug, Validate, Default, Clone, Serialize)]
+#[derive(Deserialize, Validate)]
 pub struct UserPasswordUpdateRequest {
     #[validate(
         length(min = 6, message = "new password must be at least 6 characters")

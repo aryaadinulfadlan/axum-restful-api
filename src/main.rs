@@ -20,7 +20,7 @@ mod utils;
 mod modules;
 mod middleware;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppState {
     pub env: Config,
     pub db_client: DBClient,

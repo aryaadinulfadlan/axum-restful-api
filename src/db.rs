@@ -1,6 +1,6 @@
 use sqlx::{Pool, Postgres};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DBClient {
     pub pool: Pool<Postgres>,
 }

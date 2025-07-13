@@ -12,7 +12,7 @@ use jsonwebtoken::{
 use serde::{Deserialize, Serialize};
 use crate::error::{ErrorMessage, HttpError};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct TokenClaims{
     pub sub: String,
     pub iat: usize,

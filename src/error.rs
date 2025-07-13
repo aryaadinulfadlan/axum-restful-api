@@ -20,7 +20,6 @@ use std::{
 use validator::ValidationErrors;
 use crate::dto::ErrorRouting;
 
-#[derive(Debug, PartialEq)]
 pub enum ErrorMessage {
     EmptyPassword,
     ExceededMaxPasswordLength(usize),
@@ -240,7 +239,6 @@ where
 {
     type Rejection = (StatusCode, Json<ErrorRouting>);
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        println!("Parts =>> {:?}", parts);
         match Query::<T>::from_request_parts(parts, state).await {
             Ok(query) => Ok(Self(query.0)),
             Err(rejection) => {

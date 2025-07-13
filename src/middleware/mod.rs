@@ -3,7 +3,7 @@ pub mod permission;
 use serde::{Serialize};
 use crate::modules::user::model::{User};
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Serialize, Clone)]
 pub struct AuthenticatedUser {
     pub user: User,
 }
