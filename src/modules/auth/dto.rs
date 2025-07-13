@@ -39,6 +39,14 @@ pub struct ResendActivationRequest {
     pub email: String,
 }
 #[derive(Deserialize, Validate)]
+pub struct ForgotPasswordRequest {
+    #[validate(
+        length(min = 1, message = "Email is required"),
+        email(message = "Email is invalid")
+    )]
+    pub email: String,
+}
+#[derive(Deserialize, Validate)]
 pub struct SignInRequest {
     #[validate(
         length(min = 1, message = "Email is required"),

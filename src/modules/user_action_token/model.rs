@@ -7,10 +7,13 @@ use crate::{db::DBClient, modules::user::model::User};
 
 #[derive(Serialize, Type)]
 #[sqlx(type_name = "action_type")]
+#[serde(rename_all = "kebab-case")]
 pub enum ActionType {
     #[sqlx(rename = "verify-account")]
+    #[serde(rename = "verify-account")]
     VerifyAccount,
     #[sqlx(rename = "reset-password")]
+    #[serde(rename = "reset-password")]
     ResetPassword,
 }
 
@@ -46,6 +49,7 @@ pub trait UserActionTokenRepository {
     async fn get_by_token(&self, token: &str) -> Result<Option<UserActionToken>, SqlxError>;
     async fn verify_account(&self, token: &str) -> Result<User, SqlxError>;
     async fn resend_activation(&self, user_id: Uuid, token: &str, expires_at: DateTime<Utc>) -> Result<UserActionToken, SqlxError>;
+    async fn forgot_password<'a>(&self, user_id: Uuid, user_action_data: NewUserActionToken<'a>) -> Result<UserActionToken, SqlxError>;
 }
 
 #[async_trait]
@@ -97,6 +101,21 @@ impl UserActionTokenRepository for DBClient {
             token,
             expires_at,
             user_id,
+        ).fetch_one(&self.pool).await?;
+        Ok(user_action_token)
+    }
+    async fn forgot_password<'a>(&self, user_id: Uuid, user_action_data: NewUserActionToken<'a>) -> Result<UserActionToken, SqlxError> {
+        let user_action_token = query_as!(
+            UserActionToken,
+            r#"
+                INSERT INTO user_action_tokens (user_id, token, action_type, expires_at)
+                VALUES ($1, $2, $3::text::action_type, $4)
+                RETURNING id, user_id, token, action_type as "action_type: ActionType", used_at, expires_at, created_at, updated_at;
+            "#,
+            user_id,
+            user_action_data.token,
+            user_action_data.action_type.get_value(),
+            user_action_data.expires_at
         ).fetch_one(&self.pool).await?;
         Ok(user_action_token)
     }

@@ -13,13 +13,14 @@ use validator::Validate;
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
-    error::{ErrorMessage, ErrorPayload, FieldError, HttpError, JsonParser, QueryParser},
+    error::{ErrorMessage, ErrorPayload, FieldError, HttpError, BodyParser, QueryParser},
     modules::{
-        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest},
+        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest},
         role::model::{RoleRepository, RoleType},
         email::{
             mail_verification::send_verification_email,
-            mail_welcome::send_welcome_email
+            mail_welcome::send_welcome_email,
+            mail_reset_password::send_forgot_password_email,
         },
         user::{
             dto::UserResponse,
@@ -45,6 +46,7 @@ pub fn auth_router() -> Router {
         .route("/verify", post(verify_account))
         .route("/resend-activation", post(resend_activation))
         .route("/sign-in", post(sign_in))
+        .route("/forgot-password", post(forgot_password))
 }
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
@@ -68,7 +70,7 @@ async fn send_email_verification(email: &str, name: &str, verification_token: &s
 
 async fn sign_up(
     Extension(app_state): Extension<Arc<AppState>>, 
-    JsonParser(body): JsonParser<SignUpRequest>
+    BodyParser(body): BodyParser<SignUpRequest>
 ) -> HttpResult<impl IntoResponse> {
     body.validate().map_err(FieldError::populate_errors)?;
     let user = user_by_email(&body.email, app_state.clone()).await?;
@@ -134,7 +136,7 @@ pub async fn verify_account(
 
 pub async fn resend_activation(
     Extension(app_state): Extension<Arc<AppState>>,
-    JsonParser(body): JsonParser<ResendActivationRequest>
+    BodyParser(body): BodyParser<ResendActivationRequest>
 ) -> HttpResult<impl IntoResponse> {
     body.validate().map_err(FieldError::populate_errors)?;
     let user = user_by_email(&body.email, app_state.clone()).await?
@@ -155,7 +157,7 @@ pub async fn resend_activation(
 
 pub async fn sign_in(
     Extension(app_state): Extension<Arc<AppState>>,
-    JsonParser(body): JsonParser<SignInRequest>
+    BodyParser(body): BodyParser<SignInRequest>
 ) -> HttpResult<impl IntoResponse> {
     body.validate().map_err(FieldError::populate_errors)?;
     let user = user_by_email(&body.email, app_state.clone()).await?
@@ -195,4 +197,30 @@ pub async fn sign_in(
     let mut response = SuccessResponse::new("Login is successfully.", Some(login_response)).into_response();
     response.headers_mut().extend(headers);
     Ok(response)
+}
+
+pub async fn forgot_password(
+    Extension(app_state): Extension<Arc<AppState>>,
+    BodyParser(body): BodyParser<ForgotPasswordRequest>
+) -> HttpResult<impl IntoResponse> {
+    body.validate().map_err(FieldError::populate_errors)?;
+    let user = user_by_email(&body.email, app_state.clone()).await?
+        .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
+    if !user.is_verified {
+        return Err(HttpError::bad_request(ErrorMessage::AccountNotActive.to_string(), None));
+    }
+    let verification_token = generate_random_string();
+    let expires_at = Utc::now() + Duration::hours(2);
+    let new_user_action = NewUserActionToken {
+        token: &verification_token,
+        action_type: ActionType::ResetPassword,
+        expires_at,
+    };
+    let user_action_data = app_state.db_client.forgot_password(user.id, new_user_action).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    send_forgot_password_email(&user.email, &user.name, &verification_token).await
+        .map_err(|e| {
+            HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
+        })?;
+    Ok(SuccessResponse::new("Password reset link has been sent to your email.", Some(user_action_data)))
 }

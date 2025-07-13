@@ -207,8 +207,8 @@ impl FieldError {
     }
 }
 
-pub struct JsonParser<T>(pub T);
-impl<S, T> FromRequest<S> for JsonParser<T>
+pub struct BodyParser<T>(pub T);
+impl<S, T> FromRequest<S> for BodyParser<T>
 where
     Json<T>: FromRequest<S, Rejection = JsonRejection>,
     S: Send + Sync,
