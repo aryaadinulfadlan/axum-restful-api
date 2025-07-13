@@ -2,10 +2,11 @@ use std::sync::Arc;
 use axum::{
     Extension, 
     Router,
-    http::StatusCode,
+    http::{StatusCode, header, HeaderMap},
     response::IntoResponse,
     routing::post,
 };
+use axum_extra::extract::cookie::Cookie;
 use sqlx::{Error as SqlxError};
 use chrono::{Duration, Utc};
 use validator::Validate;
@@ -14,7 +15,7 @@ use crate::{
     dto::{HttpResult, SuccessResponse},
     error::{ErrorMessage, ErrorPayload, FieldError, HttpError, JsonParser, QueryParser},
     modules::{
-        auth::dto::{SignUpRequest, VerifyAccountQuery, ResendActivationRequest},
+        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest},
         role::model::{RoleRepository, RoleType},
         email::{
             mail_verification::send_verification_email,
@@ -22,7 +23,7 @@ use crate::{
         },
         user::{
             dto::UserResponse,
-            model::{NewUser, User, UserRepository}
+            model::{NewUser, User, UserRepository, SignInResponse}
         },
         user_action_token::model::{
             ActionType, 
@@ -33,7 +34,8 @@ use crate::{
     },
     utils::{
         password,
-        rand::generate_random_string
+        rand::generate_random_string,
+        jwt
     }
 };
 
@@ -42,6 +44,7 @@ pub fn auth_router() -> Router {
         .route("/sign-up", post(sign_up))
         .route("/verify", post(verify_account))
         .route("/resend-activation", post(resend_activation))
+        .route("/sign-in", post(sign_in))
 }
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
@@ -148,4 +151,48 @@ pub async fn resend_activation(
         "Regenerate a new token key is successfully! Please check your email to verify your account.", 
         Some(updated_user_action_token)
     ))
+}
+
+pub async fn sign_in(
+    Extension(app_state): Extension<Arc<AppState>>,
+    JsonParser(body): JsonParser<SignInRequest>
+) -> HttpResult<impl IntoResponse> {
+    body.validate().map_err(FieldError::populate_errors)?;
+    let user = user_by_email(&body.email, app_state.clone()).await?
+        .ok_or(HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None))?;
+    if !user.is_verified {
+        return Err(HttpError::bad_request(ErrorMessage::AccountNotActive.to_string(), None));
+    }
+    let password_matched = password::compare(&body.password, &user.password)
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    if !password_matched {
+        return Err(HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None));
+    }
+    let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?
+        .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let token = jwt::create_token(
+        &user.id.to_string(),
+        &app_state.env.jwt_secret.as_bytes(),
+        app_state.env.jwt_max_age
+    ).map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let cookie_duration = time::Duration::minutes(app_state.env.jwt_max_age);
+    let cookie = Cookie::build(("token", token.clone()))
+        .path("/")
+        .max_age(cookie_duration)
+        .http_only(true)
+        .build();
+    let mut headers = HeaderMap::new();
+    headers.append(
+        header::SET_COOKIE,
+        cookie.to_string().parse().expect("couldn't parse cookie"),
+    );
+    let user_response = UserResponse::get_user_response(&user, role_type.get_value().to_string());
+    let login_response = SignInResponse {
+        user: user_response,
+        token,
+    };
+    let mut response = SuccessResponse::new("Login is successfully.", Some(login_response)).into_response();
+    response.headers_mut().extend(headers);
+    Ok(response)
 }

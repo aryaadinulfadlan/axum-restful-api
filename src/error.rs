@@ -41,6 +41,7 @@ pub enum ErrorMessage {
     PermissionDenied,
     UserNotAuthenticated,
     AccountActive,
+    AccountNotActive,
 }
 #[derive(Serialize)]
 pub struct ErrorResponse<'a, T> {
@@ -89,6 +90,7 @@ impl ErrorMessage {
             ErrorMessage::PermissionDenied => "You are not allowed to perform this action.".to_string(),
             ErrorMessage::UserNotAuthenticated => "Authentication required. Please log in.".to_string(),
             ErrorMessage::AccountActive => "Activation failed. Your account is already active.".to_string(),
+            ErrorMessage::AccountNotActive => "Your account is not active, please activate first.".to_string(),
         }
     }
 }

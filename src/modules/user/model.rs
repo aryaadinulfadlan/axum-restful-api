@@ -1,17 +1,18 @@
 use async_trait::async_trait;
 use chrono::prelude::*;
-use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, Error as SqlxError, FromRow, Type};
+use serde::{Serialize};
+use sqlx::{query, query_as, Error as SqlxError, FromRow};
 use uuid::Uuid;
 use crate::{
     db::DBClient, 
     modules::{
         role::model::{RoleType, RoleRepository},
-        user_action_token::model::NewUserActionToken
+        user_action_token::model::NewUserActionToken,
+        user::dto::UserResponse,
     },
 };
 
-#[derive(Debug, Deserialize, Serialize, FromRow, Type, Clone)]
+#[derive(Debug, Serialize, FromRow, Clone)]
 pub struct User {
     pub id: Uuid,
     pub role_id: Uuid,
@@ -21,6 +22,12 @@ pub struct User {
     pub is_verified: bool,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SignInResponse {
+    pub user: UserResponse,
+    pub token: String,
 }
 
 pub struct NewUser<'a> {
