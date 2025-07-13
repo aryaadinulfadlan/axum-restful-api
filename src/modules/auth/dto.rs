@@ -30,3 +30,11 @@ pub struct VerifyAccountQuery {
     #[validate(length(min = 1, message = "Token key is required."))]
     pub token: String,
 }
+#[derive(Serialize, Deserialize, Validate)]
+pub struct ResendActivationRequest {
+    #[validate(
+        length(min = 1, message = "Email is required"),
+        email(message = "Email is invalid")
+    )]
+    pub email: String,
+}

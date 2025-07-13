@@ -40,6 +40,7 @@ pub enum ErrorMessage {
     DataNotFound,
     PermissionDenied,
     UserNotAuthenticated,
+    AccountActive,
 }
 #[derive(Serialize)]
 pub struct ErrorResponse<'a, T> {
@@ -82,11 +83,12 @@ impl ErrorMessage {
             ErrorMessage::TokenNotProvided => "You are not logged in, please provide a token.".to_string(),
             ErrorMessage::TokenExpired => "Token has expired.".to_string(),
             ErrorMessage::TooManyRequest => "Request limit is exceeded, too many request.".to_string(),
-            ErrorMessage::TokenKeyExpired => "Token key has expired.".to_string(),
+            ErrorMessage::TokenKeyExpired => "Token key has expired. Please request a new key.".to_string(),
             ErrorMessage::TokenKeyInvalid => "Token key is invalid.".to_string(),
             ErrorMessage::DataNotFound => "Data is not found.".to_string(),
             ErrorMessage::PermissionDenied => "You are not allowed to perform this action.".to_string(),
             ErrorMessage::UserNotAuthenticated => "Authentication required. Please log in.".to_string(),
+            ErrorMessage::AccountActive => "Activation failed. Your account is already active.".to_string(),
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::{
     dto::{HttpResult, SuccessResponse},
     error::{ErrorMessage, ErrorPayload, FieldError, HttpError, JsonParser, QueryParser},
     modules::{
-        auth::dto::{SignUpRequest, VerifyAccountQuery},
+        auth::dto::{SignUpRequest, VerifyAccountQuery, ResendActivationRequest},
         role::model::{RoleRepository, RoleType},
         email::{
             mail_verification::send_verification_email,
@@ -41,6 +41,7 @@ pub fn auth_router() -> Router {
     Router::new()
         .route("/sign-up", post(sign_up))
         .route("/verify", post(verify_account))
+        .route("/resend-activation", post(resend_activation))
 }
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
@@ -53,6 +54,13 @@ async fn user_action_by_token(token: &str, app_state: Arc<AppState>) -> Result<O
         .get_by_token(token).await
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     Ok(user)
+}
+async fn send_email_verification(email: &str, name: &str, verification_token: &str) -> Result<(), HttpError<ErrorPayload>> {
+    send_verification_email(email, name, verification_token).await
+        .map_err(|e| {
+            HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
+        })?;
+    Ok(())
 }
 
 async fn sign_up(
@@ -89,10 +97,7 @@ async fn sign_up(
         Err(SqlxError::Database(db_err)) => Err(HttpError::server_error(db_err.to_string(), None)),
         Err(_) => Err(HttpError::server_error(ErrorMessage::ServerError.to_string(), None)),
         Ok(data) => {
-            send_verification_email(&body.email, &body.name, &verification_token).await
-                .map_err(|e| {
-                    HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
-                })?;
+            send_email_verification(&body.email, &body.name, &verification_token).await?;
             let (user, role_type) = data;
             let user_response = UserResponse::get_user_response(&user, role_type.get_value().to_string());
             Ok((
@@ -121,6 +126,26 @@ pub async fn verify_account(
         .map_err(|e| {
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
         })?;
-    let response = SuccessResponse::<()>::new("Congratulations! Your account is activated, please login.", None);
-    Ok(response)
+    Ok(SuccessResponse::<()>::new("Congratulations! Your account is activated, please login.", None))
+}
+
+pub async fn resend_activation(
+    Extension(app_state): Extension<Arc<AppState>>,
+    JsonParser(body): JsonParser<ResendActivationRequest>
+) -> HttpResult<impl IntoResponse> {
+    body.validate().map_err(FieldError::populate_errors)?;
+    let user = user_by_email(&body.email, app_state.clone()).await?
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
+    if user.is_verified {
+       return Err(HttpError::bad_request(ErrorMessage::AccountActive.to_string(), None)); 
+    }
+    let verification_token = generate_random_string();
+    let expires_at = Utc::now() + Duration::hours(24);
+    let updated_user_action_token = app_state.db_client.resend_activation(user.id, &verification_token, expires_at).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    send_email_verification(&user.email, &user.name, &verification_token).await?;
+    Ok(SuccessResponse::new(
+        "Regenerate a new token key is successfully! Please check your email to verify your account.", 
+        Some(updated_user_action_token)
+    ))
 }

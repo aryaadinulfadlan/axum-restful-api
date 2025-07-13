@@ -45,6 +45,7 @@ pub struct NewUserActionToken<'a> {
 pub trait UserActionTokenRepository {
     async fn get_by_token(&self, token: &str) -> Result<Option<UserActionToken>, SqlxError>;
     async fn verify_account(&self, token: &str) -> Result<User, SqlxError>;
+    async fn resend_activation(&self, user_id: Uuid, token: &str, expires_at: DateTime<Utc>) -> Result<UserActionToken, SqlxError>;
 }
 
 #[async_trait]
@@ -83,5 +84,20 @@ impl UserActionTokenRepository for DBClient {
         ).fetch_one(&mut *transaction).await?;
         transaction.commit().await?;
         Ok(user)
+    }
+    async fn resend_activation(&self, user_id: Uuid, token: &str, expires_at: DateTime<Utc>) -> Result<UserActionToken, SqlxError> {
+        let user_action_token = query_as!(
+            UserActionToken,
+            r#"
+                UPDATE user_action_tokens
+                SET token = $1, expires_at = $2, updated_at = Now()
+                WHERE user_id = $3 AND action_type = 'verify-account'
+                RETURNING id, user_id, token, action_type as "action_type: ActionType", used_at, expires_at, created_at, updated_at;
+            "#,
+            token,
+            expires_at,
+            user_id,
+        ).fetch_one(&self.pool).await?;
+        Ok(user_action_token)
     }
 }
