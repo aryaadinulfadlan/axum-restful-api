@@ -1,9 +1,11 @@
-use axum::{
-    routing::{get, post, put, delete}, 
-    Router, 
-    response::{IntoResponse}
+use std::sync::Arc;
+use axum::{routing::{get, post, put, delete}, Router, response::{IntoResponse}, Extension};
+use crate::{
+    AppState,
+    dto::{HttpResult, SuccessResponse},
+    middleware::AuthenticatedUser,
+    modules::auth::handler::mapping_user_response
 };
-use crate::dto::HttpResult;
 
 pub fn user_router() -> Router {
     Router::new()
@@ -19,8 +21,14 @@ pub fn user_router() -> Router {
         .route("/{id}", delete(user_delete))
 }
 
-async fn user_self() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_self(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>
+) -> HttpResult<impl IntoResponse> {
+    let user_response = mapping_user_response(user_auth.user, app_state.clone()).await?;
+    Ok(
+        SuccessResponse::new("Getting user profile data.", Some(user_response))
+    )
 }
 async fn user_list() -> HttpResult<impl IntoResponse> {
     Ok(())

@@ -70,7 +70,7 @@ async fn send_email_verification(email: &str, name: &str, verification_token: &s
         })?;
     Ok(())
 }
-async fn mapping_user_response(user: User, app_state: Arc<AppState>) -> Result<UserResponse, HttpError<ErrorPayload>> {
+pub async fn mapping_user_response(user: User, app_state: Arc<AppState>) -> Result<UserResponse, HttpError<ErrorPayload>> {
     let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
         .map_err(|e| HttpError::server_error(e.to_string(), None))?
         .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
@@ -128,7 +128,7 @@ async fn sign_up(
     }
 }
 
-pub async fn verify_account(
+async fn verify_account(
     Extension(app_state): Extension<Arc<AppState>>,
     QueryParser(query_params): QueryParser<VerifyAccountQuery>
 ) -> HttpResult<impl IntoResponse> {
@@ -169,7 +169,7 @@ pub async fn resend_activation(
     ))
 }
 
-pub async fn sign_in(
+async fn sign_in(
     Extension(app_state): Extension<Arc<AppState>>,
     BodyParser(body): BodyParser<SignInRequest>
 ) -> HttpResult<impl IntoResponse> {
@@ -180,7 +180,7 @@ pub async fn sign_in(
         return Err(HttpError::bad_request(ErrorMessage::AccountNotActive.to_string(), None));
     }
     let password_matched = password::compare(&body.password, &user.password)
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None))?;
     if !password_matched {
         return Err(HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None));
     }
@@ -189,7 +189,7 @@ pub async fn sign_in(
         &app_state.env.jwt_secret.as_bytes(),
         app_state.env.jwt_max_age
     ).map_err(|e| HttpError::server_error(e.to_string(), None))?;
-    let cookie_duration = time::Duration::minutes(app_state.env.jwt_max_age);
+    let cookie_duration = time::Duration::seconds(6);
     let cookie = Cookie::build(("token", token.clone()))
         .path("/")
         .max_age(cookie_duration)
@@ -210,7 +210,7 @@ pub async fn sign_in(
     Ok(response)
 }
 
-pub async fn forgot_password(
+async fn forgot_password(
     Extension(app_state): Extension<Arc<AppState>>,
     BodyParser(body): BodyParser<ForgotPasswordRequest>
 ) -> HttpResult<impl IntoResponse> {
@@ -236,7 +236,7 @@ pub async fn forgot_password(
     Ok(SuccessResponse::new("Password reset link has been sent to your email.", Some(user_action_data)))
 }
 
-pub async fn reset_password(
+async fn reset_password(
     Extension(app_state): Extension<Arc<AppState>>,
     QueryParser(query_params): QueryParser<ResetPasswordQuery>,
     BodyParser(body): BodyParser<ResetPasswordRequest>,

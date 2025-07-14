@@ -23,7 +23,7 @@ VALUES
         'e3488ac6-7012-4d95-a002-663b9a6f879a',
         'Clark Kent',
         'clark_kent@gmail.com',
-        '$2a$10$Ex86AamJanKW8yuwxCVYme22uA8zpOIvEpjpNGGeMIxxMj1r98GgO',
+        '$argon2id$v=19$m=19456,t=2,p=1$icVKw4et+NRmkqJWsyWMaQ$mbrdsPRp1Foynsmo2gD8QxPUZZeRruvgRUN+lnOzp+Q',
         true
     ),
     (
@@ -31,7 +31,7 @@ VALUES
         'e3488ac6-7012-4d95-a002-663b9a6f879a',
         'Bruce Wayne',
         'bruce_wayne@gmail.com',
-        '$2a$10$UWWHQC1SyMmOGGDcHM1We.gjHN.vP79vgH3jO22XaACznioNxy2D.',
+        '$argon2id$v=19$m=19456,t=2,p=1$VpcT1ZwQ5Qy4QAGr9MqiQw$QmY6GDkD/CR742tdI3NveH/OJnR4cmaBVGPBhP0nass',
         true
     ),
     (
@@ -39,6 +39,6 @@ VALUES
         '4b30ed16-06bc-4f7f-8293-6cb8a040267e',
         'Princess Diana',
         'princess_diana@gmail.com',
-        '$2a$10$PnrNtmnRS.Ap6bQSPqCS5eKTGGFGYVHJ73si8G2Ta240sbdZEU8Ke',
+        '$argon2id$v=19$m=19456,t=2,p=1$3tjE+SkY+sqaDN4+RXiviA$laUjPHr7j90c8I2PRJ0rZdrtK18bI5fQQVSlf0+liOQ',
         true
     );

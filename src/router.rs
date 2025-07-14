@@ -28,7 +28,7 @@ async fn not_allowed(request: Request) -> impl IntoResponse {
 pub fn create_router(app_state: Arc<AppState>) -> Router {
     let api_route = Router::new()
         .nest("/auth", auth_router())
-        .nest("/user", user_router()).layer(middleware::from_fn(auth_token))
+        .nest("/user", user_router().layer(middleware::from_fn(auth_token)))
         .layer(TraceLayer::new_for_http())
         .layer(Extension(app_state));
     Router::new().nest("/api", api_route)
