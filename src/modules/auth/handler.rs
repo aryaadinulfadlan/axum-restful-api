@@ -1,11 +1,5 @@
 use std::sync::Arc;
-use axum::{
-    Extension, 
-    Router,
-    http::{StatusCode, header, HeaderMap},
-    response::IntoResponse,
-    routing::post,
-};
+use axum::{Extension, Router, http::{StatusCode, header, HeaderMap}, response::IntoResponse, routing::post};
 use axum_extra::extract::cookie::Cookie;
 use sqlx::{Error as SqlxError};
 use chrono::{Duration, Utc};
@@ -15,7 +9,7 @@ use crate::{
     dto::{HttpResult, SuccessResponse},
     error::{ErrorMessage, ErrorPayload, FieldError, HttpError, BodyParser, QueryParser},
     modules::{
-        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest},
+        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest, ResetPasswordQuery, ResetPasswordRequest},
         role::model::{RoleRepository, RoleType},
         email::{
             mail_verification::send_verification_email,
@@ -47,6 +41,7 @@ pub fn auth_router() -> Router {
         .route("/resend-activation", post(resend_activation))
         .route("/sign-in", post(sign_in))
         .route("/forgot-password", post(forgot_password))
+        .route("/reset-password", post(reset_password))
 }
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
@@ -66,6 +61,13 @@ async fn send_email_verification(email: &str, name: &str, verification_token: &s
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
         })?;
     Ok(())
+}
+async fn mapping_user_response(user: User, app_state: Arc<AppState>) -> Result<UserResponse, HttpError<ErrorPayload>> {
+    let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?
+        .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let user_response = UserResponse::get_user_response(&user, role_type.get_value().to_string());
+    Ok(user_response)
 }
 
 async fn sign_up(
@@ -118,14 +120,13 @@ pub async fn verify_account(
     QueryParser(query_params): QueryParser<VerifyAccountQuery>
 ) -> HttpResult<impl IntoResponse> {
     query_params.validate().map_err(FieldError::populate_errors)?;
-    let user = user_action_by_token(&query_params.token, app_state.clone()).await?
+    let user_action = user_action_by_token(&query_params.token, app_state.clone()).await?
         .ok_or(HttpError::bad_request(ErrorMessage::TokenKeyInvalid.to_string(), None))?;
-    let expires_at = user.expires_at.ok_or(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None))?;
-    let token = user.token.ok_or(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None))?;
+    let expires_at = user_action.expires_at.ok_or(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None))?;
     if Utc::now() > expires_at {
         return Err(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None));
     }
-    let user = app_state.db_client.verify_account(&token).await
+    let user = app_state.db_client.verify_account(user_action.user_id, user_action.id).await
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     send_welcome_email(&user.email, &user.name).await
         .map_err(|e| {
@@ -170,9 +171,6 @@ pub async fn sign_in(
     if !password_matched {
         return Err(HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None));
     }
-    let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?
-        .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let token = jwt::create_token(
         &user.id.to_string(),
         &app_state.env.jwt_secret.as_bytes(),
@@ -189,12 +187,12 @@ pub async fn sign_in(
         header::SET_COOKIE,
         cookie.to_string().parse().expect("couldn't parse cookie"),
     );
-    let user_response = UserResponse::get_user_response(&user, role_type.get_value().to_string());
-    let login_response = SignInResponse {
+    let user_response = mapping_user_response(user, app_state.clone()).await?;
+    let sign_in_response = SignInResponse {
         user: user_response,
         token,
     };
-    let mut response = SuccessResponse::new("Login is successfully.", Some(login_response)).into_response();
+    let mut response = SuccessResponse::new("Login is successfully.", Some(sign_in_response)).into_response();
     response.headers_mut().extend(headers);
     Ok(response)
 }
@@ -223,4 +221,25 @@ pub async fn forgot_password(
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
         })?;
     Ok(SuccessResponse::new("Password reset link has been sent to your email.", Some(user_action_data)))
+}
+
+pub async fn reset_password(
+    Extension(app_state): Extension<Arc<AppState>>,
+    QueryParser(query_params): QueryParser<ResetPasswordQuery>,
+    BodyParser(body): BodyParser<ResetPasswordRequest>,
+) -> HttpResult<impl IntoResponse> {
+    query_params.validate().map_err(FieldError::populate_errors)?;
+    body.validate().map_err(FieldError::populate_errors)?;
+    let user_action = user_action_by_token(&query_params.token, app_state.clone()).await?
+        .ok_or(HttpError::bad_request(ErrorMessage::TokenKeyInvalid.to_string(), None))?;
+    let expires_at = user_action.expires_at.ok_or(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None))?;
+    if Utc::now() > expires_at {
+        return Err(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None));
+    }
+    let hash_password = password::hash(&body.new_password)
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let user = app_state.db_client.reset_password(user_action.user_id, user_action.id, hash_password).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let user_response = mapping_user_response(user, app_state.clone()).await?;
+    Ok(SuccessResponse::new("Password has been successfully changed. Please Login.", Some(user_response)))
 }

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Serialize};
-use sqlx::{FromRow, Type, Error as SqlxError, query_as};
+use sqlx::{FromRow, Type, Error as SqlxError, query_as, query};
 use uuid::Uuid;
 use crate::{db::DBClient, modules::user::model::User};
 
@@ -47,9 +47,10 @@ pub struct NewUserActionToken<'a> {
 #[async_trait]
 pub trait UserActionTokenRepository {
     async fn get_by_token(&self, token: &str) -> Result<Option<UserActionToken>, SqlxError>;
-    async fn verify_account(&self, token: &str) -> Result<User, SqlxError>;
+    async fn verify_account(&self, user_id: Uuid, user_action_id: Uuid) -> Result<User, SqlxError>;
     async fn resend_activation(&self, user_id: Uuid, token: &str, expires_at: DateTime<Utc>) -> Result<UserActionToken, SqlxError>;
     async fn forgot_password<'a>(&self, user_id: Uuid, user_action_data: NewUserActionToken<'a>) -> Result<UserActionToken, SqlxError>;
+    async fn reset_password(&self, user_id: Uuid, user_action_id: Uuid, new_password: String) -> Result<User, SqlxError>;
 }
 
 #[async_trait]
@@ -65,18 +66,16 @@ impl UserActionTokenRepository for DBClient {
         ).fetch_optional(&self.pool).await?;
         Ok(user_action_token)
     }
-    async fn verify_account(&self, token: &str) -> Result<User, SqlxError> {
+    async fn verify_account(&self, user_id: Uuid, user_action_id: Uuid) -> Result<User, SqlxError> {
         let mut transaction = self.pool.begin().await?;
-        let user_action_token = query_as!(
-            UserActionToken,
+        query!(
             r#"
                 UPDATE user_action_tokens 
                 SET used_at = Now(), token = NULL, expires_at = NULL, updated_at = Now()
-                WHERE token = $1 AND used_at IS NULL
-                RETURNING id, user_id, token, action_type as "action_type: ActionType", used_at, expires_at, created_at, updated_at;
+                WHERE id = $1
             "#,
-            token
-        ).fetch_one(&mut *transaction).await?;
+            user_action_id
+        ).execute(&mut *transaction).await?;
         let user = query_as!(
             User,
             r#"
@@ -84,7 +83,7 @@ impl UserActionTokenRepository for DBClient {
                 SET is_verified = true, updated_at = Now() WHERE id = $1
                 RETURNING id, role_id, name, email, password, is_verified, created_at, updated_at;
             "#,
-            user_action_token.user_id
+            user_id
         ).fetch_one(&mut *transaction).await?;
         transaction.commit().await?;
         Ok(user)
@@ -110,6 +109,12 @@ impl UserActionTokenRepository for DBClient {
             r#"
                 INSERT INTO user_action_tokens (user_id, token, action_type, expires_at)
                 VALUES ($1, $2, $3::text::action_type, $4)
+                ON CONFLICT (user_id, action_type)
+                DO UPDATE SET 
+                    token = excluded.token, 
+                    used_at = NULL,
+                    expires_at = excluded.expires_at, 
+                    updated_at = Now()
                 RETURNING id, user_id, token, action_type as "action_type: ActionType", used_at, expires_at, created_at, updated_at;
             "#,
             user_id,
@@ -118,5 +123,28 @@ impl UserActionTokenRepository for DBClient {
             user_action_data.expires_at
         ).fetch_one(&self.pool).await?;
         Ok(user_action_token)
+    }
+    async fn reset_password(&self, user_id: Uuid, user_action_id: Uuid, new_password: String) -> Result<User, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        query!(
+            r#"
+                UPDATE user_action_tokens 
+                SET token = NULL, used_at = Now(), expires_at = NULL, updated_at = Now()
+                WHERE id = $1
+            "#,
+            user_action_id
+        ).execute(&mut *transaction).await?;
+        let user = query_as!(
+            User,
+            r#"
+                UPDATE users 
+                SET password = $1, updated_at = Now() WHERE id = $2
+                RETURNING id, role_id, name, email, password, is_verified, created_at, updated_at;
+            "#,
+            new_password,
+            user_id
+        ).fetch_one(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(user)
     }
 }

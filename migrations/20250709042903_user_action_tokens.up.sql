@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS user_action_tokens (
       expires_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW(),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      CONSTRAINT unique_user_action_type UNIQUE (user_id, action_type)
 );

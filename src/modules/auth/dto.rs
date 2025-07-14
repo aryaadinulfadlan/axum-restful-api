@@ -47,6 +47,23 @@ pub struct ForgotPasswordRequest {
     pub email: String,
 }
 #[derive(Deserialize, Validate)]
+pub struct ResetPasswordQuery {
+    #[validate(length(min = 1, message = "Token key is required."))]
+    pub token: String,
+}
+#[derive(Deserialize, Validate)]
+pub struct ResetPasswordRequest {
+    #[validate(
+        length(min = 6, message = "new password must be at least 6 characters")
+    )]
+    pub new_password: String,
+    #[validate(
+        // length(min = 6, message = "new password confirm must be at least 6 characters"),
+        must_match(other = "new_password", message="new passwords and password confirm is not match")
+    )]
+    pub new_password_confirm: String,
+}
+#[derive(Deserialize, Validate)]
 pub struct SignInRequest {
     #[validate(
         length(min = 1, message = "Email is required"),
