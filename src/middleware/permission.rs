@@ -12,6 +12,66 @@ use crate::{
     AppState
 };
 
+pub enum Permission {
+    UserSelf,
+    UserUpdate,
+    UserList,
+    UserDetail,
+    UserFollow,
+    UserFollowers,
+    UserFollowing,
+    UserFeed,
+    UserDelete,
+    UserChangePassword,
+    PostCreate,
+    PostDetail,
+    PostUpdate,
+    PostDelete,
+    CommentCreate,
+}
+
+impl Permission {
+    pub fn to_string(&self) -> String {
+        match self {
+            Permission::UserSelf => "user:self".to_string(),
+            Permission::UserUpdate => "user:update".to_string(),
+            Permission::UserList => "user:list".to_string(),
+            Permission::UserDetail => "user:detail".to_string(),
+            Permission::UserFollow => "user:follow".to_string(),
+            Permission::UserFollowers => "user:followers".to_string(),
+            Permission::UserFollowing => "user:following".to_string(),
+            Permission::UserFeed => "user:feed".to_string(),
+            Permission::UserDelete => "user:delete".to_string(),
+            Permission::UserChangePassword => "user:change-password".to_string(),
+            Permission::PostCreate => "post:create".to_string(),
+            Permission::PostDetail => "post:detail".to_string(),
+            Permission::PostUpdate => "post:update".to_string(),
+            Permission::PostDelete => "post:delete".to_string(),
+            Permission::CommentCreate => "comment:create".to_string(),
+        }
+    }
+    pub fn from_str(str: &str) -> Option<Self> {
+        match str {
+            "user:self" => Some(Permission::UserSelf),
+            "user:update" => Some(Permission::UserUpdate),
+            "user:list" => Some(Permission::UserList),
+            "user:detail" => Some(Permission::UserDetail),
+            "user:follow" => Some(Permission::UserFollow),
+            "user:followers" => Some(Permission::UserFollowers),
+            "user:following" => Some(Permission::UserFollowing),
+            "user:feed" => Some(Permission::UserFeed),
+            "user:delete" => Some(Permission::UserDelete),
+            "user:change-password" => Some(Permission::UserChangePassword),
+            "post:create" => Some(Permission::PostCreate),
+            "post:detail" => Some(Permission::PostDetail),
+            "post:update" => Some(Permission::PostUpdate),
+            "post:delete" => Some(Permission::PostDelete),
+            "comment:create" => Some(Permission::CommentCreate),
+            _ => None,
+        }
+    }
+}
+
 pub async fn check_permission(
     Extension(app_state): Extension<Arc<AppState>>,
     req: Request,

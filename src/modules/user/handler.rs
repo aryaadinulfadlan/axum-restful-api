@@ -1,24 +1,47 @@
 use std::sync::Arc;
-use axum::{routing::{get, post, put, delete}, Router, response::{IntoResponse}, Extension};
+use axum::{routing::{get, post, put, delete}, Router, response::{IntoResponse}, Extension, middleware};
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
-    middleware::AuthenticatedUser,
-    modules::auth::handler::mapping_user_response
+    middleware::{
+        AuthenticatedUser,
+        permission::{check_permission, Permission}
+    },
+    modules::auth::handler::mapping_user_response,
 };
 
 pub fn user_router() -> Router {
     Router::new()
-        .route("/self", get(user_self))
-        .route("/users", get(user_list))
-        .route("/{id}", get(user_detail))
-        .route("/{id}", put(user_update))
-        .route("/{id}/change-password", put(user_change_password))
-        .route("/{id}/follow", post(user_follow_unfollow))
-        .route("/{id}/followers", get(user_connections))
-        .route("/{id}/following", get(user_connections))
-        .route("/feed", get(user_feeds))
-        .route("/{id}", delete(user_delete))
+        .route("/self", get(user_self).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserSelf.to_string())
+        })))
+        .route("/users", get(user_list).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserList.to_string())
+        })))
+        .route("/{id}", get(user_detail).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserDetail.to_string())
+        })))
+        .route("/{id}", put(user_update).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserUpdate.to_string())
+        })))
+        .route("/{id}/change-password", put(user_change_password).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserChangePassword.to_string())
+        })))
+        .route("/{id}/follow", post(user_follow_unfollow).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserFollow.to_string())
+        })))
+        .route("/{id}/followers", get(user_connections).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserFollowers.to_string())
+        })))
+        .route("/{id}/following", get(user_connections).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserFollowing.to_string())
+        })))
+        .route("/feed", get(user_feeds).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserFeed.to_string())
+        })))
+        .route("/{id}", delete(user_delete).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserDelete.to_string())
+        })))
 }
 
 async fn user_self(
