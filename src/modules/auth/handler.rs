@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use axum::{Extension, Router, http::{StatusCode, header, HeaderMap}, response::IntoResponse, routing::post};
+use axum::{middleware, Extension, Router, http::{StatusCode, header, HeaderMap}, response::IntoResponse, routing::{post, get}};
 use axum_extra::extract::cookie::Cookie;
 use sqlx::{Error as SqlxError};
 use chrono::{Duration, Utc};
@@ -31,11 +31,19 @@ use crate::{
         password,
         rand::generate_random_string,
         jwt
-    }
+    },
+    middleware::auth::auth_basic
 };
 
 pub fn auth_router() -> Router {
     Router::new()
+        .route(
+            "/basic", 
+            get(basic_auth)
+                .layer(middleware::from_fn(|state, req, next| {
+                    auth_basic(state, req, next)
+                }))
+        )
         .route("/sign-up", post(sign_up))
         .route("/verify", post(verify_account))
         .route("/resend-activation", post(resend_activation))
@@ -70,6 +78,11 @@ async fn mapping_user_response(user: User, app_state: Arc<AppState>) -> Result<U
     Ok(user_response)
 }
 
+async fn basic_auth() -> HttpResult<impl IntoResponse> {
+    Ok(
+        SuccessResponse::<()>::new("Authenticated as Basic Authentication.", None)
+    )
+}
 async fn sign_up(
     Extension(app_state): Extension<Arc<AppState>>, 
     BodyParser(body): BodyParser<SignUpRequest>

@@ -14,7 +14,7 @@ INSERT INTO permissions (id, name, description)
 VALUES
     ('c5a236a3-f985-4b94-bb09-39f4c0d7f898', 'user:self', 'Get self information of a logged in user.'),
     ('72b27681-7537-4869-b870-28f61037e154', 'user:update', 'Update a user account.'),
-    ('c3ee1a81-aad8-44a7-ab07-890e7d0a759a', 'user:reset-password', 'Reset user password.'),
+    ('c3ee1a81-aad8-44a7-ab07-890e7d0a759a', 'user:change-password', 'Change user password.'),
     ('0f75366c-2df2-4b74-94e8-dc4cdcc6e9ce', 'user:list', 'Get list of all users.'),
     ('3f1c5226-7e68-4034-98d0-8dfa19c8d4e6', 'user:detail', 'Get detail of a user account.'),
     ('463d9784-e62b-4d51-a98e-d5ecd04d0947', 'user:follow', 'Follow or unfollow a user account.'),
