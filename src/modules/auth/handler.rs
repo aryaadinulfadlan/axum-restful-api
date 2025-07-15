@@ -189,7 +189,7 @@ async fn sign_in(
         &app_state.env.jwt_secret.as_bytes(),
         app_state.env.jwt_max_age
     ).map_err(|e| HttpError::server_error(e.to_string(), None))?;
-    let cookie_duration = time::Duration::seconds(6);
+    let cookie_duration = time::Duration::hours(6);
     let cookie = Cookie::build(("token", token.clone()))
         .path("/")
         .max_age(cookie_duration)

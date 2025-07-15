@@ -1,12 +1,17 @@
 use core::str;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use validator::Validate;
-use crate::modules::user::model::{User};
+use sqlx::FromRow;
+use uuid::Uuid;
+use validator::{Validate, ValidationError};
+use crate::{
+    modules::user::model::{User}, 
+    dto::{default_limit, default_page, default_order_by}
+};
 
-#[derive(Serialize)]
+#[derive(Serialize, FromRow)]
 pub struct UserResponse {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
     pub email: String,
     pub role: String,
@@ -18,7 +23,7 @@ pub struct UserResponse {
 impl UserResponse {
     pub fn get_user_response(user: &User, role: String) -> Self {
         Self {
-            id: user.id.to_string(),
+            id: user.id,
             name: user.name.to_owned(),
             email: user.email.to_owned(),
             role,
@@ -65,4 +70,32 @@ pub struct UserPasswordUpdateRequest {
         length(min = 6, message = "Old password must be at least 6 characters")
     )]
     pub old_password: String,
+}
+
+fn validate_order_by(value: &str) -> Result<(), ValidationError> {
+    match value {
+        "ASC" | "DESC" => Ok(()),
+        _ => {
+            let mut error = ValidationError::new("invalid_order_by");
+            error.message = Some("Order By must be either 'ASC' or 'DESC'".into());
+            Err(error)
+        }
+    }
+}
+
+
+#[derive(Deserialize, Validate)]
+pub struct UserParams {
+    #[serde(default = "default_limit")]
+    #[validate(range(min = 1, message = "Limit is minimum 1."))]
+    pub limit: Option<usize>,
+    #[serde(default = "default_page")]
+    #[validate(range(min = 1, message = "Page is minimum 1."))]
+    pub page: Option<usize>,
+    #[serde(default = "default_order_by")]
+    #[validate(custom(function = "validate_order_by"))]
+    pub order_by: Option<String>,
+    #[validate(length(min = 1, message = "Search must be at least 1 character."))]
+    pub search: Option<String>,
+    pub is_verified: Option<bool>,
 }

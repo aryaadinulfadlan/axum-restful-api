@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use axum::{routing::{get, post, put, delete}, Router, response::{IntoResponse}, Extension, middleware};
+use validator::Validate;
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
@@ -7,7 +8,11 @@ use crate::{
         AuthenticatedUser,
         permission::{check_permission, Permission}
     },
-    modules::auth::handler::mapping_user_response,
+    modules::{
+        auth::handler::mapping_user_response,
+        user::{dto::UserParams, model::UserRepository}
+    },
+    error::{FieldError, QueryParser, HttpError}
 };
 
 pub fn user_router() -> Router {
@@ -50,11 +55,19 @@ async fn user_self(
 ) -> HttpResult<impl IntoResponse> {
     let user_response = mapping_user_response(user_auth.user, app_state.clone()).await?;
     Ok(
-        SuccessResponse::new("Getting user profile data.", Some(user_response))
+        SuccessResponse::new("Getting logged in user profile data.", Some(user_response))
     )
 }
-async fn user_list() -> HttpResult<impl IntoResponse> {
-    Ok(())
+
+async fn user_list(
+    Extension(app_state): Extension<Arc<AppState>>,
+    QueryParser(query_params): QueryParser<UserParams>
+) -> HttpResult<impl IntoResponse> {
+    query_params.validate().map_err(FieldError::populate_errors)?;
+    let result = app_state.db_client.get_users(query_params).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let response = SuccessResponse::new("Getting user list data", Some(result));
+    Ok(response)
 }
 async fn user_detail() -> HttpResult<impl IntoResponse> {
     Ok(())

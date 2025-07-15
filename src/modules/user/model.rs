@@ -1,15 +1,16 @@
 use async_trait::async_trait;
 use chrono::prelude::*;
 use serde::{Serialize};
-use sqlx::{query, query_as, Error as SqlxError, FromRow};
+use sqlx::{query, query_as, Error as SqlxError, FromRow, Postgres, QueryBuilder};
 use uuid::Uuid;
 use crate::{
     db::DBClient, 
     modules::{
         role::model::{RoleType, RoleRepository},
         user_action_token::model::NewUserActionToken,
-        user::dto::UserResponse,
+        user::dto::{UserResponse, UserParams},
     },
+    dto::{PaginatedData, PaginationMeta}
 };
 
 #[derive(Serialize, FromRow, Clone)]
@@ -42,6 +43,7 @@ pub trait UserRepository {
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>, SqlxError>;
     async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, SqlxError>;
     async fn save_user<'a, 'b>(&self, user_data: NewUser<'a>, user_action_data: NewUserActionToken<'b>) -> Result<(User, RoleType), SqlxError>;
+    async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
 }
 
 #[async_trait]
@@ -101,5 +103,72 @@ impl UserRepository for DBClient {
                 Err(SqlxError::RowNotFound.into())
             }
         }
+    }
+    async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError> {
+        let limit = user_params.limit.unwrap_or(1) as i32;
+        let page = user_params.page.unwrap_or(1) as i32;
+        let offset = (page - 1) * limit;
+        let order_by = user_params.order_by.unwrap_or("DESC".to_string());
+        
+        let mut query_builder_items: QueryBuilder<Postgres> = QueryBuilder::new(
+            "SELECT u.id, u.name AS name, u.email, r.name::text AS role, u.is_verified, u.created_at, u.updated_at FROM users AS u JOIN roles AS r ON r.id = u.role_id"
+        );
+        let mut query_builder_count: QueryBuilder<Postgres> = QueryBuilder::new("SELECT COUNT(DISTINCT u.id) FROM users AS u JOIN roles AS r ON r.id = u.role_id");
+        let mut has_where = false;
+        if let Some(is_verified) = user_params.is_verified {
+            query_builder_items
+                .push(" WHERE is_verified = ")
+                .push_bind(is_verified);
+            query_builder_count
+                .push(" WHERE is_verified = ")
+                .push_bind(is_verified);
+            has_where = true;
+        }
+        if let Some(search) = user_params.search {
+            if !has_where {
+                query_builder_items
+                    .push(" WHERE (name ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(" OR email ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(")");
+                query_builder_count
+                    .push(" WHERE (name ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(" OR email ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(")");
+            } else {
+                query_builder_items
+                    .push(" AND (name ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(" OR email ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(")");
+                query_builder_count
+                    .push(" AND (name ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(" OR email ILIKE ")
+                    .push_bind(format!("%{}%", search))
+                    .push(")");
+            }
+        }
+        query_builder_items
+            .push(" ORDER BY created_at ")
+            .push(order_by)
+            .push(" LIMIT ")
+            .push_bind(limit)
+            .push(" OFFSET ")
+            .push_bind(offset);
+        let query_items = query_builder_items.build_query_as::<UserResponse>();
+        let query_count = query_builder_count.build_query_scalar::<i64>();
+        let users = query_items.fetch_all(&self.pool).await?;
+        let total_items = query_count.fetch_one(&self.pool).await?;
+        let pagination = PaginationMeta::new(page, limit, total_items);
+        let paginated_data = PaginatedData {
+            items: users,
+            pagination,
+        };
+        Ok(paginated_data)
     }
 }
