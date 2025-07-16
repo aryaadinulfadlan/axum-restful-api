@@ -9,10 +9,10 @@ use crate::{
         permission::{check_permission, Permission}
     },
     modules::{
-        auth::handler::mapping_user_response,
-        user::{dto::UserParams, model::UserRepository}
+        user::{dto::{UserParams, UserResponse}, model::UserRepository},
+        role::model::RoleRepository,
     },
-    error::{FieldError, QueryParser, HttpError}
+    error::{FieldError, QueryParser, HttpError, ErrorMessage}
 };
 
 pub fn user_router() -> Router {
@@ -53,7 +53,10 @@ async fn user_self(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>
 ) -> HttpResult<impl IntoResponse> {
-    let user_response = mapping_user_response(user_auth.user, app_state.clone()).await?;
+    let role_type = app_state.db_client.get_role_name_by_id(user_auth.user.role_id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let user_response = UserResponse::get_user_response(&user_auth.user, role_type);
     Ok(
         SuccessResponse::new("Getting logged in user profile data.", Some(user_response))
     )
@@ -65,7 +68,7 @@ async fn user_list(
 ) -> HttpResult<impl IntoResponse> {
     query_params.validate().map_err(FieldError::populate_errors)?;
     let result = app_state.db_client.get_users(query_params).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let response = SuccessResponse::new("Getting user list data", Some(result));
     Ok(response)
 }

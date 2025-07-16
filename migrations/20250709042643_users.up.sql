@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
      email CITEXT UNIQUE NOT NULL,
      password TEXT NOT NULL,
      is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     updated_at TIMESTAMPTZ DEFAULT NOW(),
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 CREATE INDEX users_email_idx ON users (email);

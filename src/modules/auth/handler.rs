@@ -18,7 +18,7 @@ use crate::{
         },
         user::{
             dto::UserResponse,
-            model::{NewUser, User, UserRepository, SignInResponse}
+            model::{NewUser, UserRepository, SignInResponse}
         },
         user_action_token::model::{
             ActionType, 
@@ -51,16 +51,16 @@ pub fn auth_router() -> Router {
         .route("/forgot-password", post(forgot_password))
         .route("/reset-password", post(reset_password))
 }
-async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
+async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<UserResponse>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
         .get_user_by_email(email).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     Ok(user)
 }
 async fn user_action_by_token(token: &str, app_state: Arc<AppState>) -> Result<Option<UserActionToken>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
         .get_by_token(token).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     Ok(user)
 }
 async fn send_email_verification(email: &str, name: &str, verification_token: &str) -> Result<(), HttpError<ErrorPayload>> {
@@ -69,13 +69,6 @@ async fn send_email_verification(email: &str, name: &str, verification_token: &s
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
         })?;
     Ok(())
-}
-pub async fn mapping_user_response(user: User, app_state: Arc<AppState>) -> Result<UserResponse, HttpError<ErrorPayload>> {
-    let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?
-        .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
-    let user_response = UserResponse::get_user_response(&user, role_type.get_value().to_string());
-    Ok(user_response)
 }
 
 async fn basic_auth() -> HttpResult<impl IntoResponse> {
@@ -97,7 +90,7 @@ async fn sign_up(
     let verification_token = generate_random_string();
     let expires_at = Utc::now() + Duration::hours(24);
     let hash_password = password::hash(&body.password)
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let role_id = app_state.db_client.get_role_id_by_name(RoleType::User).await
         .map_err(|_| HttpError::server_error(ErrorMessage::DataNotFound.to_string(), None))?
         .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
@@ -119,7 +112,7 @@ async fn sign_up(
         Ok(data) => {
             send_email_verification(&body.email, &body.name, &verification_token).await?;
             let (user, role_type) = data;
-            let user_response = UserResponse::get_user_response(&user, role_type.get_value().to_string());
+            let user_response = UserResponse::get_user_response(&user, role_type);
             Ok((
                 StatusCode::CREATED,
                 SuccessResponse::new("Registration is successfully! Please check your email to verify your account.", Some(user_response))
@@ -140,7 +133,7 @@ async fn verify_account(
         return Err(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None));
     }
     let user = app_state.db_client.verify_account(user_action.user_id, user_action.id).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     send_welcome_email(&user.email, &user.name).await
         .map_err(|e| {
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
@@ -161,7 +154,7 @@ pub async fn resend_activation(
     let verification_token = generate_random_string();
     let expires_at = Utc::now() + Duration::hours(24);
     let updated_user_action_token = app_state.db_client.resend_activation(user.id, &verification_token, expires_at).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     send_email_verification(&user.email, &user.name, &verification_token).await?;
     Ok(SuccessResponse::new(
         "Regenerate a new token key is successfully! Please check your email to verify your account.", 
@@ -200,9 +193,8 @@ async fn sign_in(
         header::SET_COOKIE,
         cookie.to_string().parse().expect("couldn't parse cookie"),
     );
-    let user_response = mapping_user_response(user, app_state.clone()).await?;
     let sign_in_response = SignInResponse {
-        user: user_response,
+        user,
         token,
     };
     let mut response = SuccessResponse::new("Login is successfully.", Some(sign_in_response)).into_response();
@@ -228,7 +220,7 @@ async fn forgot_password(
         expires_at,
     };
     let user_action_data = app_state.db_client.forgot_password(user.id, new_user_action).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     send_forgot_password_email(&user.email, &user.name, &verification_token).await
         .map_err(|e| {
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
@@ -252,7 +244,10 @@ async fn reset_password(
     let hash_password = password::hash(&body.new_password)
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     let user = app_state.db_client.reset_password(user_action.user_id, user_action.id, hash_password).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
-    let user_response = mapping_user_response(user, app_state.clone()).await?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let user_response = UserResponse::get_user_response(&user, role_type);
     Ok(SuccessResponse::new("Password has been successfully changed. Please Login.", Some(user_response)))
 }

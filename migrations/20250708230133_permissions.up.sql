@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS permissions (
    id UUID NOT NULL PRIMARY KEY DEFAULT (uuid_generate_v4()),
    name VARCHAR(50) NOT NULL UNIQUE,
    description VARCHAR(100) NOT NULL,
-   created_at TIMESTAMPTZ DEFAULT NOW(),
-   updated_at TIMESTAMPTZ DEFAULT NOW()
+   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 INSERT INTO permissions (id, name, description)

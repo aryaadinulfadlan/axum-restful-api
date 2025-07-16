@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS posts (
      title VARCHAR(20) NOT NULL,
      content TEXT NOT NULL,
      tags VARCHAR(20)[] NOT NULL,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     updated_at TIMESTAMPTZ DEFAULT NOW(),
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

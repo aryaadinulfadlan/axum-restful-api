@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use serde::{Serialize};
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type, Error as SqlxError, query_scalar};
 use uuid::Uuid;
 use crate::db::DBClient;
 
-#[derive(Serialize, Type)]
+#[derive(Serialize, Type, Deserialize)]
 #[sqlx(type_name = "role_type", rename_all = "lowercase")]
 pub enum RoleType {
     Admin,
@@ -26,8 +26,8 @@ pub struct Role {
     pub id: Uuid,
     pub name: RoleType,
     pub description: String,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[async_trait]

@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS roles (
      id UUID NOT NULL PRIMARY KEY DEFAULT (uuid_generate_v4()),
      name role_type NOT NULL DEFAULT 'user',
      description VARCHAR(100) NOT NULL,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     updated_at TIMESTAMPTZ DEFAULT NOW()
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 INSERT INTO roles (id, name, description)

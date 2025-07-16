@@ -5,8 +5,8 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 use crate::{
-    modules::user::model::{User}, 
-    dto::{default_limit, default_page, default_order_by}
+    modules::{user::model::{User}, role::model::RoleType,}, 
+    dto::{default_limit, default_page, default_order_by},
 };
 
 #[derive(Serialize, FromRow)]
@@ -14,27 +14,30 @@ pub struct UserResponse {
     pub id: Uuid,
     pub name: String,
     pub email: String,
-    pub role: String,
+    pub role: RoleType,
+    #[serde(skip_serializing)]
+    pub password: String,
     pub is_verified: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl UserResponse {
-    pub fn get_user_response(user: &User, role: String) -> Self {
+    pub fn get_user_response(user: &User, role: RoleType) -> Self {
         Self {
             id: user.id,
             name: user.name.to_owned(),
             email: user.email.to_owned(),
             role,
+            password: user.password.to_owned(),
             is_verified: user.is_verified,
-            created_at: user.created_at.unwrap(),
-            updated_at: user.updated_at.unwrap(),
+            created_at: user.created_at,
+            updated_at: user.updated_at,
         }
     }
-    pub fn get_users_response(users: &[User], role: &str) -> Vec<Self> {
-        users.iter().map(|user| Self::get_user_response(user, role.to_string())).collect()
-    }
+    // pub fn get_users_response(users: &[User], role: &str) -> Vec<Self> {
+    //     users.iter().map(|user| Self::get_user_response(user, role.to_string())).collect()
+    // }
 }
 
 #[derive(Deserialize, Validate)]

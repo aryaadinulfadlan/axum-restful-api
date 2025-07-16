@@ -21,8 +21,8 @@ pub struct User {
     pub email: String,
     pub password: String,
     pub is_verified: bool,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -41,7 +41,7 @@ pub struct NewUser<'a> {
 #[async_trait]
 pub trait UserRepository {
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>, SqlxError>;
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, SqlxError>;
+    async fn get_user_by_email(&self, email: &str) -> Result<Option<UserResponse>, SqlxError>;
     async fn save_user<'a, 'b>(&self, user_data: NewUser<'a>, user_action_data: NewUserActionToken<'b>) -> Result<(User, RoleType), SqlxError>;
     async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
 }
@@ -58,11 +58,13 @@ impl UserRepository for DBClient {
             ).fetch_optional(&self.pool).await?;
         Ok(user)
     }
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, SqlxError> {
+    async fn get_user_by_email(&self, email: &str) -> Result<Option<UserResponse>, SqlxError> {
         let user = query_as!(
-                User,
+                UserResponse,
                 r#"
-                    SELECT * from users WHERE email = $1;
+                    SELECT u.id, u.name AS name, u.email, r.name AS "role: RoleType", u.password, u.is_verified, u.created_at, u.updated_at 
+                    FROM users AS u JOIN roles AS r ON r.id = u.role_id
+                    WHERE u.email = $1;
                 "#,
                 email
             ).fetch_optional(&self.pool).await?;
@@ -94,9 +96,9 @@ impl UserRepository for DBClient {
         ).execute(&mut *transaction).await?;
         let role_type = self.get_role_name_by_id(user.role_id).await?;
         match role_type {
-            Some(role_name) => {
+            Some(role_type) => {
                 transaction.commit().await?;
-                Ok((user, role_name))
+                Ok((user, role_type))
             }
             None => {
                 transaction.rollback().await?;
@@ -111,7 +113,7 @@ impl UserRepository for DBClient {
         let order_by = user_params.order_by.unwrap_or("DESC".to_string());
         
         let mut query_builder_items: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT u.id, u.name AS name, u.email, r.name::text AS role, u.is_verified, u.created_at, u.updated_at FROM users AS u JOIN roles AS r ON r.id = u.role_id"
+            "SELECT u.id, u.name AS name, u.email, r.name AS role, u.password, u.is_verified, u.created_at, u.updated_at FROM users AS u JOIN roles AS r ON r.id = u.role_id"
         );
         let mut query_builder_count: QueryBuilder<Postgres> = QueryBuilder::new("SELECT COUNT(DISTINCT u.id) FROM users AS u JOIN roles AS r ON r.id = u.role_id");
         let mut has_where = false;
