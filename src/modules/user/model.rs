@@ -1,14 +1,14 @@
 use async_trait::async_trait;
 use chrono::prelude::*;
 use serde::{Serialize};
-use sqlx::{query, query_as, Error as SqlxError, FromRow, Postgres, QueryBuilder};
+use sqlx::{query, query_as, query_scalar, Error as SqlxError, FromRow, Postgres, QueryBuilder};
 use uuid::Uuid;
 use crate::{
     db::DBClient, 
     modules::{
         role::model::{RoleType, RoleRepository},
         user_action_token::model::NewUserActionToken,
-        user::dto::{UserResponse, UserParams},
+        user::dto::{UserResponse, UserParams, UserUpdateRequest},
     },
     dto::{PaginatedData, PaginationMeta}
 };
@@ -19,6 +19,7 @@ pub struct User {
     pub role_id: Uuid,
     pub name: String,
     pub email: String,
+    #[serde(skip_serializing)]
     pub password: String,
     pub is_verified: bool,
     pub created_at: DateTime<Utc>,
@@ -66,6 +67,7 @@ pub trait UserRepository {
     async fn save_user<'a, 'b>(&self, user_data: NewUser<'a>, user_action_data: NewUserActionToken<'b>) -> Result<(User, RoleType), SqlxError>;
     async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
     async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError>;
+    async fn update_user(&self, user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
 }
 
 #[async_trait]
@@ -243,5 +245,27 @@ impl UserRepository for DBClient {
         };
         transaction.commit().await?;
         Ok(Some(user_detail))
+    }
+    async fn update_user(&self, user_id: &Uuid, body: UserUpdateRequest) -> Result<User, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        query_scalar!(
+            r#"
+                SELECT id FROM users WHERE id = $1 FOR UPDATE;
+            "#,
+            user_id
+        ).fetch_optional(&mut *transaction).await?;
+        let user = query_as!(
+            User,
+            r#"
+                UPDATE users
+                SET name = $1, updated_at = Now()
+                WHERE id = $2
+                RETURNING id, role_id, name, email, password, is_verified, created_at, updated_at
+            "#,
+            body.name,
+            user_id
+        ).fetch_one(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(user)
     }
 }

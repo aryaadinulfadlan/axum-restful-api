@@ -10,10 +10,10 @@ use crate::{
         permission::{check_permission, Permission}
     },
     modules::{
-        user::{dto::{UserParams, UserResponse}, model::UserRepository},
+        user::{dto::{UserParams, UserResponse, UserUpdateRequest}, model::UserRepository},
         role::model::RoleRepository,
     },
-    error::{FieldError, QueryParser, HttpError, ErrorMessage, PathParser}
+    error::{FieldError, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser}
 };
 
 pub fn user_router() -> Router {
@@ -84,8 +84,18 @@ async fn user_detail(
         SuccessResponse::new("Getting user detail data", Some(user_detail))
     )
 }
-async fn user_update() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_update(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser(id): PathParser<String>,
+    BodyParser(body): BodyParser<UserUpdateRequest>,
+) -> HttpResult<impl IntoResponse> {
+    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    body.validate().map_err(FieldError::populate_errors)?;
+    let updated_user = app_state.db_client.update_user(&id, body).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    Ok(
+        SuccessResponse::new("Successfully updating user data.", Some(updated_user))
+    )
 }
 async fn user_change_password() -> HttpResult<impl IntoResponse> {
     Ok(())
