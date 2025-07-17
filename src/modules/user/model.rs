@@ -26,6 +26,27 @@ pub struct User {
 }
 
 #[derive(Serialize)]
+pub struct UserDetail {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub role: RoleType,
+    pub is_verified: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub following: Vec<Connections>,
+    pub followers: Vec<Connections>,
+}
+#[derive(Serialize)]
+pub struct Connections {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub role: RoleType,
+    pub is_verified: bool,
+}
+
+#[derive(Serialize)]
 pub struct SignInResponse {
     pub user: UserResponse,
     pub token: String,
@@ -44,6 +65,7 @@ pub trait UserRepository {
     async fn get_user_by_email(&self, email: &str) -> Result<Option<UserResponse>, SqlxError>;
     async fn save_user<'a, 'b>(&self, user_data: NewUser<'a>, user_action_data: NewUserActionToken<'b>) -> Result<(User, RoleType), SqlxError>;
     async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
+    async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError>;
 }
 
 #[async_trait]
@@ -172,5 +194,54 @@ impl UserRepository for DBClient {
             pagination,
         };
         Ok(paginated_data)
+    }
+    async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let user_data = query!(
+                r#"
+                    SELECT u.id, u.name AS name, u.email, r.name AS "role: RoleType", u.is_verified, u.created_at, u.updated_at 
+                    FROM users AS u JOIN roles AS r ON r.id = u.role_id
+                    WHERE u.id = $1;
+                "#,
+                user_id
+            ).fetch_optional(&mut *transaction).await?;
+        let Some(user) = user_data else {
+            return Ok(None);
+        };
+        let following = query_as!(
+                Connections,
+                r#"
+                    SELECT u.id, u.name AS name, u.email, r.name AS "role: RoleType", u.is_verified
+                    FROM users AS u
+                        JOIN roles AS r ON r.id = u.role_id
+                        JOIN user_followers AS uf ON uf.following_id = u.id
+                    WHERE uf.follower_id = $1;
+                "#,
+                user_id
+            ).fetch_all(&mut *transaction).await?;
+        let followers = query_as!(
+                Connections,
+                r#"
+                    SELECT u.id, u.name AS name, u.email, r.name AS "role: RoleType", u.is_verified
+                    FROM users AS u
+                        JOIN roles AS r ON r.id = u.role_id
+                        JOIN user_followers AS uf ON uf.follower_id = u.id
+                    WHERE uf.following_id = $1;
+                "#,
+                user_id
+            ).fetch_all(&mut *transaction).await?;
+        let user_detail = UserDetail {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            is_verified: user.is_verified,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            following,
+            followers,
+        };
+        transaction.commit().await?;
+        Ok(Some(user_detail))
     }
 }

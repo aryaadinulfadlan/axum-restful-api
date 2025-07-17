@@ -5,7 +5,7 @@ use sqlx::{FromRow, Type, Error as SqlxError, query_scalar};
 use uuid::Uuid;
 use crate::db::DBClient;
 
-#[derive(Serialize, Type, Deserialize)]
+#[derive(Serialize, Type, Deserialize, Debug)]
 #[sqlx(type_name = "role_type", rename_all = "lowercase")]
 pub enum RoleType {
     Admin,

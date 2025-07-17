@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use axum::{routing::{get, post, put, delete}, Router, response::{IntoResponse}, Extension, middleware};
+use uuid::Uuid;
 use validator::Validate;
 use crate::{
     AppState,
@@ -12,7 +13,7 @@ use crate::{
         user::{dto::{UserParams, UserResponse}, model::UserRepository},
         role::model::RoleRepository,
     },
-    error::{FieldError, QueryParser, HttpError, ErrorMessage}
+    error::{FieldError, QueryParser, HttpError, ErrorMessage, PathParser}
 };
 
 pub fn user_router() -> Router {
@@ -61,7 +62,6 @@ async fn user_self(
         SuccessResponse::new("Getting logged in user profile data.", Some(user_response))
     )
 }
-
 async fn user_list(
     Extension(app_state): Extension<Arc<AppState>>,
     QueryParser(query_params): QueryParser<UserParams>
@@ -72,8 +72,17 @@ async fn user_list(
     let response = SuccessResponse::new("Getting user list data", Some(result));
     Ok(response)
 }
-async fn user_detail() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_detail(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser(id): PathParser<String>,
+) -> HttpResult<impl IntoResponse> {
+    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let user_detail = app_state.db_client.get_user_detail(&id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
+    Ok(
+        SuccessResponse::new("Getting user detail data", Some(user_detail))
+    )
 }
 async fn user_update() -> HttpResult<impl IntoResponse> {
     Ok(())
