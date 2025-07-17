@@ -10,10 +10,11 @@ use crate::{
         permission::{check_permission, Permission}
     },
     modules::{
-        user::{dto::{UserParams, UserResponse, UserUpdateRequest}, model::UserRepository},
+        user::{dto::{UserParams, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest}, model::UserRepository},
         role::model::RoleRepository,
     },
-    error::{FieldError, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser}
+    error::{FieldError, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
+    utils::password
 };
 
 pub fn user_router() -> Router {
@@ -30,7 +31,7 @@ pub fn user_router() -> Router {
         .route("/{id}", put(user_update).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::UserUpdate.to_string())
         })))
-        .route("/{id}/change-password", put(user_change_password).layer(middleware::from_fn(|state, req, next| {
+        .route("/change-password", put(user_change_password).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::UserChangePassword.to_string())
         })))
         .route("/{id}/follow", post(user_follow_unfollow).layer(middleware::from_fn(|state, req, next| {
@@ -97,8 +98,24 @@ async fn user_update(
         SuccessResponse::new("Successfully updating user data.", Some(updated_user))
     )
 }
-async fn user_change_password() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_change_password(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    BodyParser(body): BodyParser<UserPasswordUpdateRequest>,
+) -> HttpResult<impl IntoResponse> {
+    body.validate().map_err(FieldError::populate_errors)?;
+    let password_match = password::compare(&body.old_password, &user_auth.user.password)
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    if !password_match {
+        return Err(HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None));
+    }
+    let hash_password = password::hash(&body.new_password)
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    app_state.db_client.update_user_password(&user_auth.user.id, hash_password).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    Ok(
+        SuccessResponse::<()>::new("Password updated successfully, please login.", None)
+    )
 }
 async fn user_follow_unfollow() -> HttpResult<impl IntoResponse> {
     Ok(())

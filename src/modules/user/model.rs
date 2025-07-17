@@ -68,6 +68,7 @@ pub trait UserRepository {
     async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
     async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError>;
     async fn update_user(&self, user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
+    async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError>;
 }
 
 #[async_trait]
@@ -266,6 +267,20 @@ impl UserRepository for DBClient {
             user_id
         ).fetch_one(&mut *transaction).await?;
         transaction.commit().await?;
+        Ok(user)
+    }
+    async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError> {
+        let user = query_as!(
+            User,
+            r#"
+                UPDATE users
+                SET password = $1, updated_at = Now()
+                WHERE id = $2
+                RETURNING id, role_id, name, email, password, is_verified, created_at, updated_at
+            "#,
+            new_password,
+            user_id
+        ).fetch_one(&self.pool).await?;
         Ok(user)
     }
 }
