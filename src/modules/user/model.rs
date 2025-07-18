@@ -10,7 +10,8 @@ use crate::{
         user_action_token::model::NewUserActionToken,
         user::dto::{UserResponse, UserParams, UserUpdateRequest, FollowKind},
     },
-    dto::{PaginatedData, PaginationMeta}
+    dto::{PaginatedData, PaginationMeta},
+    error::{ErrorMessage}
 };
 
 #[derive(Serialize, FromRow, Clone)]
@@ -61,10 +62,11 @@ pub trait UserRepository {
     async fn save_user<'a, 'b>(&self, user_data: NewUser<'a>, user_action_data: NewUserActionToken<'b>) -> Result<(User, RoleType), SqlxError>;
     async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
     async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError>;
-    async fn update_user(&self, user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
+    async fn update_user(&self, user_id: &Uuid, auth_user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
     async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError>;
     async fn follow_unfollow_user(&self, user_target: Uuid, user_sender: Uuid) -> Result<String, SqlxError>;
     async fn get_user_connections(&self, user_id: Uuid, kind: FollowKind) -> Result<Vec<Connections>, SqlxError>;
+    async fn delete_user(&self, user_id: Uuid) -> Result<(), SqlxError>;
 }
 
 #[async_trait]
@@ -243,14 +245,17 @@ impl UserRepository for DBClient {
         transaction.commit().await?;
         Ok(Some(user_detail))
     }
-    async fn update_user(&self, user_id: &Uuid, body: UserUpdateRequest) -> Result<User, SqlxError> {
+    async fn update_user(&self, user_id: &Uuid, auth_user_id: &Uuid, body: UserUpdateRequest) -> Result<User, SqlxError> {
         let mut transaction = self.pool.begin().await?;
         query_scalar!(
             r#"
                 SELECT id FROM users WHERE id = $1 FOR UPDATE;
             "#,
             user_id
-        ).fetch_optional(&mut *transaction).await?;
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        if auth_user_id != user_id {
+            return Err(SqlxError::InvalidArgument(ErrorMessage::PermissionDenied.to_string()));
+        }
         let user = query_as!(
             User,
             r#"
@@ -316,7 +321,7 @@ impl UserRepository for DBClient {
         Ok(message)
     }
     async fn get_user_connections(&self, user_id: Uuid, kind: FollowKind) -> Result<Vec<Connections>, SqlxError> {
-        let data = match kind { 
+        let data = match kind {
             FollowKind::Following => {
                 query_as!(
                     Connections,
@@ -345,5 +350,22 @@ impl UserRepository for DBClient {
             },
         };
         Ok(data)
+    }
+    async fn delete_user(&self, user_id: Uuid) -> Result<(), SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        query_scalar!(
+            r#"
+                SELECT id FROM users WHERE id = $1 FOR UPDATE;
+            "#,
+            user_id
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        query!(
+            r#"
+                DELETE FROM users WHERE id = $1;
+            "#,
+            user_id
+        ).execute(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(())
     }
 }

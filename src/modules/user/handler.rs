@@ -19,6 +19,7 @@ use crate::{
     error::{FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
     utils::password
 };
+use sqlx::{Error as SqlxError};
 
 pub fn user_router() -> Router {
     Router::new()
@@ -46,11 +47,11 @@ pub fn user_router() -> Router {
         .route("/{id}/following", get(user_connections).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::UserFollowing.to_string())
         })))
-        .route("/feed", get(user_feeds).layer(middleware::from_fn(|state, req, next| {
-            check_permission(state, req, next, Permission::UserFeed.to_string())
-        })))
         .route("/{id}", delete(user_delete).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::UserDelete.to_string())
+        })))
+        .route("/feed", get(user_feeds).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::UserFeed.to_string())
         })))
 }
 
@@ -102,11 +103,14 @@ async fn user_update(
 ) -> HttpResult<impl IntoResponse> {
     let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     body.validate().map_err(FieldError::populate_errors)?;
-    if id != user_auth.user.id {
-        return Err(HttpError::forbidden(ErrorMessage::PermissionDenied.to_string(), None));
-    }
-    let updated_user = app_state.db_client.update_user(&id, body).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let updated_user = app_state.db_client.update_user(&id, &user_auth.user.id, body).await
+        .map_err(|e| {
+            match e {
+                SqlxError::RowNotFound => HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None),
+                SqlxError::InvalidArgument(e) => HttpError::forbidden(e.to_string(), None),
+                _ => HttpError::server_error(ErrorMessage::ServerError.to_string(), None)
+            }
+        })?;
     Ok(
         SuccessResponse::new("Successfully updating user data.", Some(updated_user))
     )
@@ -140,12 +144,12 @@ async fn user_follow_unfollow(
     if id == sender_id {
         return Err(HttpError::bad_request(ErrorMessage::RequestInvalid.to_string(), None));
     }
-    let user_target = user_by_id(&id, app_state.clone()).await?
-        .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
-    let message = app_state.db_client.follow_unfollow_user(user_target.id, sender_id).await
+    user_by_id(&id, app_state.clone()).await?
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
+    let message = app_state.db_client.follow_unfollow_user(id, sender_id).await
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     let response = FollowUnfollowResponse {
-        user_target: user_target.id,
+        user_target: id,
         user_sender: sender_id,
         message,
     };
@@ -161,16 +165,34 @@ async fn user_connections(
     let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     let path = req.uri().path().rsplit('/').next().unwrap_or("");
     user_by_id(&id, app_state.clone()).await?
-        .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     let result = app_state.db_client.get_user_connections(id, FollowKind::from_str(path).unwrap_or(FollowKind::Following)).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     Ok(
         SuccessResponse::new("List of user connections.", Some(result))
     )
 }
-async fn user_feeds() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_delete(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(id): PathParser<String>,
+) -> HttpResult<impl IntoResponse> {
+    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let sender_id = user_auth.user.id;
+    if id == sender_id {
+        return Err(HttpError::bad_request(ErrorMessage::RequestInvalid.to_string(), None));
+    }
+    app_state.db_client.delete_user(id).await
+        .map_err(|e| {
+            match e {
+                SqlxError::RowNotFound => HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None),
+                _ => HttpError::server_error(ErrorMessage::ServerError.to_string(), None),
+            }
+        })?;
+    Ok(
+        SuccessResponse::<()>::new("Successfully deleted a user.", None)
+    )
 }
-async fn user_delete() -> HttpResult<impl IntoResponse> {
+async fn user_feeds() -> HttpResult<impl IntoResponse> {
     Ok(())
 }
