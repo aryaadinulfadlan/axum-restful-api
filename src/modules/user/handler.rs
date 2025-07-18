@@ -10,10 +10,10 @@ use crate::{
         permission::{check_permission, Permission}
     },
     modules::{
-        user::{dto::{UserParams, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest}, model::UserRepository},
+        user::{dto::{UserParams, FollowUnfollowResponse, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest}, model::{UserRepository, User}},
         role::model::RoleRepository,
     },
-    error::{FieldError, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
+    error::{FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
     utils::password
 };
 
@@ -51,6 +51,12 @@ pub fn user_router() -> Router {
         })))
 }
 
+async fn user_by_id(id: &Uuid, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
+    let user = app_state.db_client
+        .get_user_by_id(id).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    Ok(user)
+}
 async fn user_self(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>
@@ -87,11 +93,15 @@ async fn user_detail(
 }
 async fn user_update(
     Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
     PathParser(id): PathParser<String>,
     BodyParser(body): BodyParser<UserUpdateRequest>,
 ) -> HttpResult<impl IntoResponse> {
     let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     body.validate().map_err(FieldError::populate_errors)?;
+    if id != user_auth.user.id {
+        return Err(HttpError::forbidden(ErrorMessage::PermissionDenied.to_string(), None));
+    }
     let updated_user = app_state.db_client.update_user(&id, body).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     Ok(
@@ -117,8 +127,28 @@ async fn user_change_password(
         SuccessResponse::<()>::new("Password updated successfully, please login.", None)
     )
 }
-async fn user_follow_unfollow() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_follow_unfollow(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(id): PathParser<String>,
+) -> HttpResult<impl IntoResponse> {
+    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let sender_id = user_auth.user.id;
+    if id == sender_id {
+        return Err(HttpError::bad_request(ErrorMessage::RequestInvalid.to_string(), None));
+    }
+    let user_target = user_by_id(&id, app_state.clone()).await?
+        .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
+    let message = app_state.db_client.follow_unfollow_user(user_target.id, sender_id).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let response = FollowUnfollowResponse {
+        user_target: user_target.id,
+        user_sender: sender_id,
+        message,
+    };
+    Ok(
+        SuccessResponse::new("Successfully follow / unfollow a new user.", Some(response))
+    )
 }
 async fn user_connections() -> HttpResult<impl IntoResponse> {
     Ok(())

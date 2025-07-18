@@ -102,3 +102,10 @@ pub struct UserParams {
     pub search: Option<String>,
     pub is_verified: Option<bool>,
 }
+
+#[derive(Serialize)]
+pub struct FollowUnfollowResponse {
+    pub user_target: Uuid,
+    pub user_sender: Uuid,
+    pub message: String,
+}

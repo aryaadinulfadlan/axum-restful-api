@@ -1,5 +1,6 @@
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use validator::Validate;
+use crate::modules::user::dto::UserResponse;
 
 #[derive(Deserialize, Validate)]
 pub struct SignUpRequest {
@@ -74,4 +75,10 @@ pub struct SignInRequest {
         length(min = 6, message = "Password must be at least 6 characters")
     )]
     pub password: String,
+}
+
+#[derive(Serialize)]
+pub struct SignInResponse {
+    pub user: UserResponse,
+    pub token: String,
 }

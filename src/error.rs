@@ -41,6 +41,7 @@ pub enum ErrorMessage {
     UserNotAuthenticated,
     AccountActive,
     AccountNotActive,
+    RequestInvalid
 }
 #[derive(Serialize)]
 pub struct ErrorResponse<'a, T> {
@@ -90,6 +91,7 @@ impl ErrorMessage {
             ErrorMessage::UserNotAuthenticated => "Authentication required. Please log in.".to_string(),
             ErrorMessage::AccountActive => "Activation failed. Your account is already active.".to_string(),
             ErrorMessage::AccountNotActive => "Your account is not active, please activate first.".to_string(),
+            ErrorMessage::RequestInvalid => "The request is invalid.".to_string(),
         }
     }
 }

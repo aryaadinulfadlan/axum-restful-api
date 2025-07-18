@@ -47,12 +47,6 @@ pub struct Connections {
     pub is_verified: bool,
 }
 
-#[derive(Serialize)]
-pub struct SignInResponse {
-    pub user: UserResponse,
-    pub token: String,
-}
-
 pub struct NewUser<'a> {
     pub role_id: Uuid,
     pub name: &'a str,
@@ -69,6 +63,7 @@ pub trait UserRepository {
     async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError>;
     async fn update_user(&self, user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
     async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError>;
+    async fn follow_unfollow_user(&self, user_target: Uuid, user_sender: Uuid) -> Result<String, SqlxError>;
 }
 
 #[async_trait]
@@ -282,5 +277,38 @@ impl UserRepository for DBClient {
             user_id
         ).fetch_one(&self.pool).await?;
         Ok(user)
+    }
+    async fn follow_unfollow_user(&self, user_target: Uuid, user_sender: Uuid) -> Result<String, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let message: String;
+        let is_exist = query_scalar!(
+            r#"
+                SELECT COUNT(*) FROM user_followers WHERE following_id = $1 AND follower_id = $2;
+            "#,
+            user_target,
+            user_sender
+        ).fetch_one(&mut *transaction).await?.ok_or(SqlxError::WorkerCrashed)?;
+        if is_exist > 0 {
+            query!(
+                r#"
+                    DELETE FROM user_followers WHERE following_id = $1 AND follower_id = $2
+                "#,
+                user_target,
+                user_sender
+            ).execute(&mut *transaction).await?;
+            message = String::from("Successfully Unfollowed");
+        } else {
+            query!(
+                r#"
+                    INSERT INTO user_followers (follower_id, following_id)
+                    VALUES ($1, $2)
+                "#,
+                user_sender,
+                user_target,
+            ).execute(&mut *transaction).await?;
+            message = String::from("Successfully Followed");
+        }
+        transaction.commit().await?;
+        Ok(message)
     }
 }

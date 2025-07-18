@@ -9,7 +9,7 @@ use crate::{
     dto::{HttpResult, SuccessResponse},
     error::{ErrorMessage, ErrorPayload, FieldError, HttpError, BodyParser, QueryParser},
     modules::{
-        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest, ResetPasswordQuery, ResetPasswordRequest},
+        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest, ResetPasswordQuery, ResetPasswordRequest, SignInResponse},
         role::model::{RoleRepository, RoleType},
         email::{
             mail_verification::send_verification_email,
@@ -18,7 +18,7 @@ use crate::{
         },
         user::{
             dto::UserResponse,
-            model::{NewUser, UserRepository, SignInResponse}
+            model::{NewUser, UserRepository}
         },
         user_action_token::model::{
             ActionType, 
