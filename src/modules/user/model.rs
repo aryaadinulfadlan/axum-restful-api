@@ -8,7 +8,7 @@ use crate::{
     modules::{
         role::model::{RoleType, RoleRepository},
         user_action_token::model::NewUserActionToken,
-        user::dto::{UserResponse, UserParams, UserUpdateRequest},
+        user::dto::{UserResponse, UserParams, UserUpdateRequest, FollowKind},
     },
     dto::{PaginatedData, PaginationMeta}
 };
@@ -64,6 +64,7 @@ pub trait UserRepository {
     async fn update_user(&self, user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
     async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError>;
     async fn follow_unfollow_user(&self, user_target: Uuid, user_sender: Uuid) -> Result<String, SqlxError>;
+    async fn get_user_connections(&self, user_id: Uuid, kind: FollowKind) -> Result<Vec<Connections>, SqlxError>;
 }
 
 #[async_trait]
@@ -280,7 +281,6 @@ impl UserRepository for DBClient {
     }
     async fn follow_unfollow_user(&self, user_target: Uuid, user_sender: Uuid) -> Result<String, SqlxError> {
         let mut transaction = self.pool.begin().await?;
-        let message: String;
         let is_exist = query_scalar!(
             r#"
                 SELECT COUNT(*) FROM user_followers WHERE following_id = $1 AND follower_id = $2;
@@ -288,27 +288,62 @@ impl UserRepository for DBClient {
             user_target,
             user_sender
         ).fetch_one(&mut *transaction).await?.ok_or(SqlxError::WorkerCrashed)?;
-        if is_exist > 0 {
-            query!(
-                r#"
-                    DELETE FROM user_followers WHERE following_id = $1 AND follower_id = $2
-                "#,
-                user_target,
-                user_sender
-            ).execute(&mut *transaction).await?;
-            message = String::from("Successfully Unfollowed");
-        } else {
-            query!(
-                r#"
-                    INSERT INTO user_followers (follower_id, following_id)
-                    VALUES ($1, $2)
-                "#,
-                user_sender,
-                user_target,
-            ).execute(&mut *transaction).await?;
-            message = String::from("Successfully Followed");
-        }
+        let message = match is_exist {
+            1 => {
+                query!(
+                    r#"
+                        DELETE FROM user_followers WHERE following_id = $1 AND follower_id = $2
+                    "#,
+                    user_target,
+                    user_sender
+                ).execute(&mut *transaction).await?;
+                String::from("Successfully Unfollowed")
+            }
+            0 => {
+                query!(
+                    r#"
+                        INSERT INTO user_followers (follower_id, following_id)
+                        VALUES ($1, $2)
+                    "#,
+                    user_sender,
+                    user_target,
+                ).execute(&mut *transaction).await?;
+                String::from("Successfully Followed")
+            }
+            _ => unreachable!()
+        };
         transaction.commit().await?;
         Ok(message)
+    }
+    async fn get_user_connections(&self, user_id: Uuid, kind: FollowKind) -> Result<Vec<Connections>, SqlxError> {
+        let data = match kind { 
+            FollowKind::Following => {
+                query_as!(
+                    Connections,
+                    r#"
+                        SELECT u.id, u.name AS name, u.email, r.name AS "role: RoleType", u.is_verified
+                        FROM users AS u
+                            JOIN roles AS r ON r.id = u.role_id
+                            JOIN user_followers AS uf ON uf.following_id = u.id
+                        WHERE uf.follower_id = $1;
+                    "#,
+                    user_id
+                ).fetch_all(&self.pool).await?
+            }
+            FollowKind::Followers => {
+                query_as!(
+                    Connections,
+                    r#"
+                        SELECT u.id, u.name AS name, u.email, r.name AS "role: RoleType", u.is_verified
+                        FROM users AS u
+                            JOIN roles AS r ON r.id = u.role_id
+                            JOIN user_followers AS uf ON uf.follower_id = u.id
+                        WHERE uf.following_id = $1;
+                    "#,
+                    user_id
+                ).fetch_all(&self.pool).await?
+            },
+        };
+        Ok(data)
     }
 }

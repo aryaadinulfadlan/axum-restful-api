@@ -109,3 +109,23 @@ pub struct FollowUnfollowResponse {
     pub user_sender: Uuid,
     pub message: String,
 }
+
+pub enum FollowKind {
+    Following,
+    Followers,
+}
+impl FollowKind {
+    pub fn to_string(&self) -> String {
+        match self {
+            FollowKind::Following => "following".to_string(),
+            FollowKind::Followers => "followers".to_string(),
+        }
+    }
+    pub fn from_str(str: &str) -> Option<Self> {
+        match str {
+            "following" => Some(FollowKind::Following),
+            "followers" => Some(FollowKind::Followers),
+            _ => None,
+        }
+    }
+}

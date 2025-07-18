@@ -1,5 +1,8 @@
 use std::sync::Arc;
-use axum::{routing::{get, post, put, delete}, Router, response::{IntoResponse}, Extension, middleware};
+use axum::{
+    routing::{get, post, put, delete},
+    extract::Request, Router, response::{IntoResponse}, Extension, middleware
+};
 use uuid::Uuid;
 use validator::Validate;
 use crate::{
@@ -10,7 +13,7 @@ use crate::{
         permission::{check_permission, Permission}
     },
     modules::{
-        user::{dto::{UserParams, FollowUnfollowResponse, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest}, model::{UserRepository, User}},
+        user::{dto::{UserParams, FollowUnfollowResponse, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest, FollowKind}, model::{UserRepository, User}},
         role::model::RoleRepository,
     },
     error::{FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
@@ -150,8 +153,20 @@ async fn user_follow_unfollow(
         SuccessResponse::new("Successfully follow / unfollow a new user.", Some(response))
     )
 }
-async fn user_connections() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_connections(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser(id): PathParser<String>,
+    req: Request,
+) -> HttpResult<impl IntoResponse> {
+    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let path = req.uri().path().rsplit('/').next().unwrap_or("");
+    user_by_id(&id, app_state.clone()).await?
+        .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
+    let result = app_state.db_client.get_user_connections(id, FollowKind::from_str(path).unwrap_or(FollowKind::Following)).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    Ok(
+        SuccessResponse::new("List of user connections.", Some(result))
+    )
 }
 async fn user_feeds() -> HttpResult<impl IntoResponse> {
     Ok(())
