@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use axum::{middleware, Router, routing::{delete, get, post, put}, Extension, response::IntoResponse};
+use uuid::Uuid;
 use validator::Validate;
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
-    error::{BodyParser, FieldError, HttpError, ErrorMessage},
+    error::{BodyParser, PathParser, FieldError, HttpError, ErrorMessage},
     middleware::{AuthenticatedUser, permission::{check_permission, Permission}},
     modules::post::dto::{CreatePostRequest, NewPost}
 };
@@ -43,8 +44,17 @@ async fn post_create(
         SuccessResponse::new("Successfully created a new post.", Some(data))
     )
 }
-async fn post_detail() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn post_detail(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser(id): PathParser<String>,
+) -> HttpResult<impl IntoResponse> {
+    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let post_detail = app_state.db_client.get_post_detail(id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
+    Ok(
+        SuccessResponse::new("Getting posts detail data", Some(post_detail))
+    )
 }
 async fn post_update() -> HttpResult<impl IntoResponse> {
     Ok(())

@@ -1,8 +1,15 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use sqlx::{FromRow, Error as SqlxError, query_as};
+use sqlx::{FromRow, Error as SqlxError, query_as, query};
 use uuid::Uuid;
-use crate::{db::DBClient, modules::post::dto::NewPost};
+use crate::{
+    db::DBClient,
+    modules::{
+        post::dto::NewPost,
+        user::dto::UserResponse,
+        role::model::{RoleType},
+    },
+};
 
 #[derive(Serialize, FromRow)]
 pub struct Post {
@@ -13,6 +20,25 @@ pub struct Post {
     pub tags: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+#[derive(Serialize, FromRow)]
+pub struct PostComment {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub content: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+#[derive(Serialize, FromRow)]
+pub struct PostDetail {
+    pub id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub user: UserResponse,
+    pub comments: Vec<PostComment>,
 }
 
 impl DBClient {
@@ -30,5 +56,49 @@ impl DBClient {
             &data.tags,
         ).fetch_one(&self.pool).await?;
         Ok(new_post)
+    }
+    pub async fn get_post_detail(&self, post_id: Uuid) -> Result<Option<PostDetail>, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let record = query!(
+            r#"
+                SELECT p.id, p.title, p.content, p.tags, p.created_at, p.updated_at,
+                       u.id AS u_id, u.name AS u_name, u.email AS u_email, r.name AS "role: RoleType", u.password AS u_pass, u.is_verified AS u_is_verified, u.created_at AS u_created_at, u.updated_at AS u_updated_at FROM posts AS p
+                JOIN users AS u ON u.id = p.user_id
+                JOIN roles AS r ON r.id = u.role_id
+                WHERE p.id = $1
+            "#,
+            post_id,
+        ).fetch_optional(&mut *transaction).await?;
+        let Some(data) = record else {
+            return Ok(None);
+        };
+        let comments = query_as!(
+            PostComment,
+            r#"
+                SELECT id, user_id, content, created_at, updated_at FROM comments
+                WHERE post_id = $1;
+            "#,
+            data.id,
+        ).fetch_all(&mut *transaction).await?;
+        let post_detail = PostDetail {
+            id: data.id,
+            title: data.title,
+            content: data.content,
+            tags: data.tags,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            user: UserResponse {
+                id: data.u_id,
+                name: data.u_name,
+                email: data.u_email,
+                role: data.role,
+                password: data.u_pass,
+                is_verified: data.u_is_verified,
+                created_at: data.u_created_at,
+                updated_at: data.u_updated_at,
+            },
+            comments,
+        };
+        Ok(Some(post_detail))
     }
 }
