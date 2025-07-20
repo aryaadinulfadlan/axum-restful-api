@@ -24,10 +24,10 @@ pub fn comment_router() -> Router {
         .route("/{post_id}", get(comment_list_by_post).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::CommentListByPost.to_string())
         })))
-        .route("/{post_id}/{comment_id}", put(comment_update).layer(middleware::from_fn(|state, req, next| {
+        .route("/{comment_id}/update", put(comment_update).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::CommentUpdate.to_string())
         })))
-        .route("/{post_id}/{comment_id}", delete(comment_delete).layer(middleware::from_fn(|state, req, next| {
+        .route("/{comment_id}/delete", delete(comment_delete).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::CommentDelete.to_string())
         })))
 }
@@ -69,8 +69,19 @@ async fn comment_list_by_post(
         SuccessResponse::new("Getting comments data by a post", Some(comments_by_post))
     )
 }
-async fn comment_update() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn comment_update(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(comment_id): PathParser<Uuid>,
+    BodyParser(body): BodyParser<CommentRequest>,
+) -> HttpResult<impl IntoResponse> {
+    body.validate().map_err(FieldError::populate_errors)?;
+    let updated_comment = app_state.db_client.update_comment(
+        comment_id, user_auth.user.id, user_auth.user.role_id, body.content
+    ).await.map_err(map_sqlx_error)?;
+    Ok(
+        SuccessResponse::new("Successfully updated comment data.", Some(updated_comment))
+    )
 }
 async fn comment_delete() -> HttpResult<impl IntoResponse> {
     Ok(())

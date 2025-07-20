@@ -3,7 +3,11 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use crate::{
     db::DBClient,
-    modules::{comment::dto::NewComment, post::model::Post},
+    modules::{
+        comment::dto::NewComment, post::model::Post,
+        role::model::{RoleRepository, RoleType},
+    },
+    error::ErrorMessage,
 };
 use sqlx::{Error as SqlxError, query_as, query, FromRow, query_scalar};
 use uuid::Uuid;
@@ -39,6 +43,7 @@ pub trait CommentRepository {
     async fn save_comment(&self, post_id: Uuid, data: NewComment) -> Result<Comment, SqlxError>;
     async fn get_comment_detail(&self, post_id: Uuid, comment_id: Uuid) -> Result<Option<CommentDetail>, SqlxError>;
     async fn get_comments_by_post(&self, post_id: Uuid) -> Result<CommentsByPost, SqlxError>;
+    async fn update_comment(&self, comment_id: Uuid, user_id: Uuid, user_role_id: Uuid, content: String) -> Result<Comment, SqlxError>;
 }
 
 #[async_trait]
@@ -121,5 +126,31 @@ impl CommentRepository for DBClient {
         };
         transaction.commit().await?;
         Ok(result)
+    }
+    async fn update_comment(&self, comment_id: Uuid, user_id: Uuid, user_role_id: Uuid, content: String) -> Result<Comment, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let comment_user_id = query_scalar!(
+            r#"
+                SELECT user_id FROM comments WHERE id = $1 FOR UPDATE;
+            "#,
+            comment_id,
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        let role = self.get_role_name_by_id(user_role_id).await?.ok_or(SqlxError::RowNotFound)?;
+        if comment_user_id != user_id && role.get_value() != RoleType::Admin.get_value() {
+            return Err(SqlxError::InvalidArgument(ErrorMessage::PermissionDenied.to_string()));
+        }
+        let comment = query_as!(
+            Comment,
+            r#"
+                UPDATE comments
+                SET content = $1, updated_at = Now()
+                WHERE id = $2
+                RETURNING id, user_id, post_id, content, created_at, updated_at;
+            "#,
+            content,
+            comment_id
+        ).fetch_one(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(comment)
     }
 }
