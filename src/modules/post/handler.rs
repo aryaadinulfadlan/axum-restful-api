@@ -18,6 +18,9 @@ pub fn post_router() -> Router {
         .route("/{id}", get(post_detail).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::PostDetail.to_string())
         })))
+        .route("/user/{id}", get(post_list_by_user).layer(middleware::from_fn(|state, req, next| {
+            check_permission(state, req, next, Permission::PostListByUser.to_string())
+        })))
         .route("/{id}", put(post_update).layer(middleware::from_fn(|state, req, next| {
             check_permission(state, req, next, Permission::PostUpdate.to_string())
         })))
@@ -39,7 +42,7 @@ async fn post_create(
         tags: body.tags,
     };
     let data = app_state.db_client.save_post(new_post).await
-        .map_err(|e| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     Ok(
         SuccessResponse::new("Successfully created a new post.", Some(data))
     )
@@ -54,6 +57,18 @@ async fn post_detail(
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
         SuccessResponse::new("Getting posts detail data", Some(post_detail))
+    )
+}
+async fn post_list_by_user(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser(id): PathParser<String>,
+) -> HttpResult<impl IntoResponse> {
+    let user_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let post_by_user = app_state.db_client.get_post_list_by_user(user_id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
+    Ok(
+        SuccessResponse::new("Getting list of posts by user", Some(post_by_user))
     )
 }
 async fn post_update() -> HttpResult<impl IntoResponse> {

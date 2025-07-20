@@ -26,4 +26,5 @@ VALUES
     ('8dd90a7a-a1b9-4ae7-be90-4051071daa1b', 'post:detail', 'Get detail of a post.'),
     ('b277ca4b-8be4-4119-95e3-26b2089021c5', 'post:update', 'Update or modify an existing post.'),
     ('ea2ab559-3a6b-4320-8d32-41c11b092a44', 'post:delete', 'Remove or delete a post.'),
+    ('9c1c850c-f2ff-4d99-a84d-74f3fef78304', 'post:list-by-user', 'Post list by user.'),
     ('86329004-3735-41ae-93a3-8c0fe965845f', 'comment:create', 'Create a new comment for a post.');

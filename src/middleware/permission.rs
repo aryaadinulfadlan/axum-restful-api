@@ -27,6 +27,7 @@ pub enum Permission {
     PostDetail,
     PostUpdate,
     PostDelete,
+    PostListByUser,
     CommentCreate,
 }
 
@@ -47,6 +48,7 @@ impl Permission {
             Permission::PostDetail => "post:detail".to_string(),
             Permission::PostUpdate => "post:update".to_string(),
             Permission::PostDelete => "post:delete".to_string(),
+            Permission::PostListByUser => "post:list-by-user".to_string(),
             Permission::CommentCreate => "comment:create".to_string(),
         }
     }
@@ -66,6 +68,7 @@ impl Permission {
             "post:detail" => Some(Permission::PostDetail),
             "post:update" => Some(Permission::PostUpdate),
             "post:delete" => Some(Permission::PostDelete),
+            "post:list-by-user" => Some(Permission::PostListByUser),
             "comment:create" => Some(Permission::CommentCreate),
             _ => None,
         }

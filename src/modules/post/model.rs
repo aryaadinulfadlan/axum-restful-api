@@ -21,7 +21,7 @@ pub struct Post {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-#[derive(Serialize, FromRow)]
+#[derive(Serialize)]
 pub struct PostComment {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -29,7 +29,7 @@ pub struct PostComment {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-#[derive(Serialize, FromRow)]
+#[derive(Serialize)]
 pub struct PostDetail {
     pub id: Uuid,
     pub title: String,
@@ -39,6 +39,28 @@ pub struct PostDetail {
     pub updated_at: DateTime<Utc>,
     pub user: UserResponse,
     pub comments: Vec<PostComment>,
+}
+#[derive(Serialize, FromRow)]
+pub struct UserPost {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub role: RoleType,
+    pub is_verified: bool,
+}
+#[derive(Serialize, FromRow)]
+pub struct PostUser {
+    pub id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+#[derive(Serialize)]
+pub struct PostListByUser {
+    pub user: UserPost,
+    pub posts: Vec<PostUser>,
 }
 
 impl DBClient {
@@ -99,6 +121,35 @@ impl DBClient {
             },
             comments,
         };
+        transaction.commit().await?;
         Ok(Some(post_detail))
+    }
+    pub async fn get_post_list_by_user(&self, user_id: Uuid) -> Result<Option<PostListByUser>, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let user = query_as!(
+            UserPost,
+            r#"
+                SELECT u.id, u.name, u.email, r.name AS "role: RoleType", is_verified FROM users AS u
+                JOIN roles AS r ON r.id = u.role_id
+                WHERE u.id = $1
+            "#,
+            user_id
+        ).fetch_optional(&mut *transaction).await?;
+        let Some(user) = user else {
+            return Ok(None);
+        };
+        let posts = query_as!(
+            PostUser,
+            r#"
+                SELECT id, title, content, tags, created_at, updated_at FROM posts
+                WHERE user_id = $1;
+            "#,
+            user_id,
+        ).fetch_all(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(Some(PostListByUser{
+            user,
+            posts,
+        }))
     }
 }
