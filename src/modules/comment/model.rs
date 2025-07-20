@@ -26,12 +26,19 @@ pub struct CommentDetail {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub post: Post,
-
 }
+
+#[derive(Serialize)]
+pub struct CommentsByPost {
+    pub post: Post,
+    pub comments: Vec<Comment>,
+}
+
 #[async_trait]
 pub trait CommentRepository {
     async fn save_comment(&self, post_id: Uuid, data: NewComment) -> Result<Comment, SqlxError>;
     async fn get_comment_detail(&self, post_id: Uuid, comment_id: Uuid) -> Result<Option<CommentDetail>, SqlxError>;
+    async fn get_comments_by_post(&self, post_id: Uuid) -> Result<CommentsByPost, SqlxError>;
 }
 
 #[async_trait]
@@ -91,5 +98,28 @@ impl CommentRepository for DBClient {
             }
         };
         Ok(Some(comment_detail))
+    }
+    async fn get_comments_by_post(&self, post_id: Uuid) -> Result<CommentsByPost, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let post = query_as!(
+            Post,
+            r#"
+                SELECT * FROM posts WHERE id = $1;
+            "#,
+            post_id,
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        let comments = query_as!(
+            Comment,
+            r#"
+                SELECT * FROM comments WHERE post_id = $1;
+            "#,
+            post_id,
+        ).fetch_all(&mut *transaction).await?;
+        let result = CommentsByPost {
+            post,
+            comments,
+        };
+        transaction.commit().await?;
+        Ok(result)
     }
 }

@@ -60,8 +60,14 @@ async fn comment_detail(
         SuccessResponse::new("Getting comment detail data", Some(comment_detail))
     )
 }
-async fn comment_list_by_post() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn comment_list_by_post(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser(post_id): PathParser<Uuid>,
+) -> HttpResult<impl IntoResponse> {
+    let comments_by_post = app_state.db_client.get_comments_by_post(post_id).await.map_err(map_sqlx_error)?;
+    Ok(
+        SuccessResponse::new("Getting comments data by a post", Some(comments_by_post))
+    )
 }
 async fn comment_update() -> HttpResult<impl IntoResponse> {
     Ok(())
