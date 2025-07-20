@@ -5,7 +5,7 @@ use validator::Validate;
 use crate::{
     dto::{HttpResult, SuccessResponse},
     middleware::{AuthenticatedUser, permission::{check_permission, Permission}},
-    error::{PathParser, map_sqlx_error, BodyParser, FieldError},
+    error::{PathParser, map_sqlx_error, BodyParser, FieldError, ErrorMessage, HttpError},
     modules::comment::{
         dto::{CommentRequest, NewComment},
         model::CommentRepository,
@@ -49,8 +49,16 @@ async fn comment_create(
         SuccessResponse::new("Successfully created a new comment.", Some(result))
     )
 }
-async fn comment_detail() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn comment_detail(
+    Extension(app_state): Extension<Arc<AppState>>,
+    PathParser((post_id, comment_id)): PathParser<(Uuid, Uuid)>,
+) -> HttpResult<impl IntoResponse> {
+    let comment_detail = app_state.db_client.get_comment_detail(post_id, comment_id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
+    Ok(
+        SuccessResponse::new("Getting comment detail data", Some(comment_detail))
+    )
 }
 async fn comment_list_by_post() -> HttpResult<impl IntoResponse> {
     Ok(())
