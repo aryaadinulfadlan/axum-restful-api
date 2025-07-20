@@ -86,6 +86,16 @@ async fn post_update(
         SuccessResponse::new("Successfully updating post data.", Some(updated_post))
     )
 }
-async fn post_delete() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn post_delete(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(id): PathParser<String>,
+) -> HttpResult<impl IntoResponse> {
+    let post_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    app_state.db_client.delete_post(
+            post_id, user_auth.user.id, user_auth.user.role_id
+        ).await.map_err(map_sqlx_error)?;
+    Ok(
+        SuccessResponse::<()>::new("Successfully deleted a post.", None)
+    )
 }

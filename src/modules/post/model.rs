@@ -181,4 +181,25 @@ impl DBClient {
         transaction.commit().await?;
         Ok(post)
     }
+    pub async fn delete_post(&self, post_id: Uuid, user_id: Uuid, user_role_id: Uuid) -> Result<(), SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let post_user_id = query_scalar!(
+            r#"
+                SELECT user_id FROM posts WHERE id = $1 FOR UPDATE;
+            "#,
+            post_id,
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        let role = self.get_role_name_by_id(user_role_id).await?.ok_or(SqlxError::RowNotFound)?;
+        if post_user_id != user_id && role.get_value() != RoleType::Admin.get_value() {
+            return Err(SqlxError::InvalidArgument(ErrorMessage::PermissionDenied.to_string()));
+        }
+        query!(
+            r#"
+                DELETE FROM posts WHERE id = $1;
+            "#,
+            post_id,
+        ).execute(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(())
+    }
 }
