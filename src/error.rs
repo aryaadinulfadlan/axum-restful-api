@@ -18,6 +18,7 @@ use std::{
     collections::BTreeMap
 };
 use validator::ValidationErrors;
+use sqlx::{Error as SqlxError};
 use crate::dto::ErrorRouting;
 
 pub enum ErrorMessage {
@@ -272,5 +273,13 @@ where
                 Err((StatusCode::BAD_REQUEST, Json(payload)))
             }
         }
+    }
+}
+
+pub fn map_sqlx_error(err: SqlxError) -> HttpError<ErrorPayload> {
+    match err {
+        SqlxError::RowNotFound => HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None),
+        SqlxError::InvalidArgument(e) => HttpError::forbidden(e.to_string(), None),
+        _ => HttpError::server_error(ErrorMessage::ServerError.to_string(), None)
     }
 }

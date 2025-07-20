@@ -16,7 +16,7 @@ use crate::{
         user::{dto::{UserParams, FollowUnfollowResponse, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest, FollowKind}, model::{UserRepository, User}},
         role::model::RoleRepository,
     },
-    error::{FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
+    error::{map_sqlx_error, FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
     utils::password
 };
 use sqlx::{Error as SqlxError};
@@ -104,13 +104,7 @@ async fn user_update(
     let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     body.validate().map_err(FieldError::populate_errors)?;
     let updated_user = app_state.db_client.update_user(&id, &user_auth.user.id, body).await
-        .map_err(|e| {
-            match e {
-                SqlxError::RowNotFound => HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None),
-                SqlxError::InvalidArgument(e) => HttpError::forbidden(e.to_string(), None),
-                _ => HttpError::server_error(ErrorMessage::ServerError.to_string(), None)
-            }
-        })?;
+        .map_err(map_sqlx_error)?;
     Ok(
         SuccessResponse::new("Successfully updating user data.", Some(updated_user))
     )

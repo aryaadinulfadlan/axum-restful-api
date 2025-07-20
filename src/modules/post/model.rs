@@ -1,14 +1,15 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use sqlx::{FromRow, Error as SqlxError, query_as, query};
+use sqlx::{FromRow, Error as SqlxError, query_as, query, query_scalar};
 use uuid::Uuid;
 use crate::{
     db::DBClient,
     modules::{
-        post::dto::NewPost,
+        post::dto::{NewPost, PostRequest},
         user::dto::UserResponse,
-        role::model::{RoleType},
+        role::model::{RoleType, RoleRepository},
     },
+    error::ErrorMessage
 };
 
 #[derive(Serialize, FromRow)]
@@ -151,5 +152,33 @@ impl DBClient {
             user,
             posts,
         }))
+    }
+    pub async fn update_post(&self, post_id: Uuid, user_id: Uuid, user_role_id: Uuid, data: PostRequest) -> Result<Post, SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let post_user_id = query_scalar!(
+            r#"
+                SELECT user_id FROM posts WHERE id = $1 FOR UPDATE;
+            "#,
+            post_id,
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        let role = self.get_role_name_by_id(user_role_id).await?.ok_or(SqlxError::RowNotFound)?;
+        if post_user_id != user_id && role.get_value() != RoleType::Admin.get_value() {
+            return Err(SqlxError::InvalidArgument(ErrorMessage::PermissionDenied.to_string()));
+        }
+        let post = query_as!(
+            Post,
+            r#"
+                UPDATE posts
+                SET title = $1, content = $2, tags = $3, updated_at = Now()
+                WHERE id = $4
+                RETURNING id, user_id, title, content, tags, created_at, updated_at;
+            "#,
+            data.title,
+            data.content,
+            &data.tags,
+            post_id,
+        ).fetch_one(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(post)
     }
 }

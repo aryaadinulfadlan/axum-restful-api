@@ -19,7 +19,7 @@ fn validate_tags(tags: &Vec<String>) -> Result<(), ValidationError> {
 }
 
 #[derive(Deserialize, Validate)]
-pub struct CreatePostRequest {
+pub struct PostRequest {
     #[validate(length(
         min = 4,
         max = 20,

@@ -5,9 +5,9 @@ use validator::Validate;
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
-    error::{BodyParser, PathParser, FieldError, HttpError, ErrorMessage},
+    error::{BodyParser, PathParser, FieldError, HttpError, ErrorMessage, map_sqlx_error},
     middleware::{AuthenticatedUser, permission::{check_permission, Permission}},
-    modules::post::dto::{CreatePostRequest, NewPost}
+    modules::post::dto::{PostRequest, NewPost}
 };
 
 pub fn post_router() -> Router {
@@ -32,7 +32,7 @@ pub fn post_router() -> Router {
 async fn post_create(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>,
-    BodyParser(body): BodyParser<CreatePostRequest>
+    BodyParser(body): BodyParser<PostRequest>
 ) -> HttpResult<impl IntoResponse> {
     body.validate().map_err(FieldError::populate_errors)?;
     let new_post = NewPost {
@@ -51,8 +51,8 @@ async fn post_detail(
     Extension(app_state): Extension<Arc<AppState>>,
     PathParser(id): PathParser<String>,
 ) -> HttpResult<impl IntoResponse> {
-    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
-    let post_detail = app_state.db_client.get_post_detail(id).await
+    let post_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    let post_detail = app_state.db_client.get_post_detail(post_id).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
@@ -71,8 +71,20 @@ async fn post_list_by_user(
         SuccessResponse::new("Getting list of posts by user", Some(post_by_user))
     )
 }
-async fn post_update() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn post_update(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(id): PathParser<String>,
+    BodyParser(body): BodyParser<PostRequest>,
+) -> HttpResult<impl IntoResponse> {
+    let post_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
+    body.validate().map_err(FieldError::populate_errors)?;
+    let updated_post = app_state.db_client.update_post(
+            post_id, user_auth.user.id, user_auth.user.role_id, body
+        ).await.map_err(map_sqlx_error)?;
+    Ok(
+        SuccessResponse::new("Successfully updating post data.", Some(updated_post))
+    )
 }
 async fn post_delete() -> HttpResult<impl IntoResponse> {
     Ok(())
