@@ -44,6 +44,7 @@ pub trait CommentRepository {
     async fn get_comment_detail(&self, post_id: Uuid, comment_id: Uuid) -> Result<Option<CommentDetail>, SqlxError>;
     async fn get_comments_by_post(&self, post_id: Uuid) -> Result<CommentsByPost, SqlxError>;
     async fn update_comment(&self, comment_id: Uuid, user_id: Uuid, user_role_id: Uuid, content: String) -> Result<Comment, SqlxError>;
+    async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid, user_role_id: Uuid) -> Result<(), SqlxError>;
 }
 
 #[async_trait]
@@ -152,5 +153,26 @@ impl CommentRepository for DBClient {
         ).fetch_one(&mut *transaction).await?;
         transaction.commit().await?;
         Ok(comment)
+    }
+    async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid, user_role_id: Uuid) -> Result<(), SqlxError> {
+        let mut transaction = self.pool.begin().await?;
+        let comment_user_id = query_scalar!(
+            r#"
+                SELECT user_id FROM comments WHERE id = $1 FOR UPDATE;
+            "#,
+            comment_id,
+        ).fetch_optional(&mut *transaction).await?.ok_or(SqlxError::RowNotFound)?;
+        let role = self.get_role_name_by_id(user_role_id).await?.ok_or(SqlxError::RowNotFound)?;
+        if comment_user_id != user_id && role.get_value() != RoleType::Admin.get_value() {
+            return Err(SqlxError::InvalidArgument(ErrorMessage::PermissionDenied.to_string()));
+        }
+        query!(
+            r#"
+                DELETE FROM comments WHERE id = $1;
+            "#,
+            comment_id,
+        ).execute(&mut *transaction).await?;
+        transaction.commit().await?;
+        Ok(())
     }
 }

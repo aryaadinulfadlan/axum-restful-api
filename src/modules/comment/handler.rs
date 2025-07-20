@@ -83,6 +83,15 @@ async fn comment_update(
         SuccessResponse::new("Successfully updated comment data.", Some(updated_comment))
     )
 }
-async fn comment_delete() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn comment_delete(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(comment_id): PathParser<Uuid>,
+) -> HttpResult<impl IntoResponse> {
+    app_state.db_client.delete_comment(
+        comment_id, user_auth.user.id, user_auth.user.role_id
+    ).await.map_err(map_sqlx_error)?;
+    Ok(
+        SuccessResponse::<()>::new("Successfully deleted a comment.", None)
+    )
 }
