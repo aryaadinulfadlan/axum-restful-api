@@ -19,7 +19,6 @@ use crate::{
     error::{map_sqlx_error, FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
     utils::password
 };
-use sqlx::{Error as SqlxError};
 
 pub fn user_router() -> Router {
     Router::new()
@@ -55,9 +54,9 @@ pub fn user_router() -> Router {
         })))
 }
 
-async fn user_by_id(id: &Uuid, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
+async fn user_by_id(user_id: &Uuid, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
-        .get_user_by_id(id).await
+        .get_user_by_id(user_id).await
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     Ok(user)
 }
@@ -85,10 +84,9 @@ async fn user_list(
 }
 async fn user_detail(
     Extension(app_state): Extension<Arc<AppState>>,
-    PathParser(id): PathParser<String>,
+    PathParser(user_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
-    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
-    let user_detail = app_state.db_client.get_user_detail(&id).await
+    let user_detail = app_state.db_client.get_user_detail(&user_id).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
@@ -98,12 +96,11 @@ async fn user_detail(
 async fn user_update(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>,
-    PathParser(id): PathParser<String>,
+    PathParser(user_id): PathParser<Uuid>,
     BodyParser(body): BodyParser<UserUpdateRequest>,
 ) -> HttpResult<impl IntoResponse> {
-    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     body.validate().map_err(FieldError::populate_errors)?;
-    let updated_user = app_state.db_client.update_user(&id, &user_auth.user.id, body).await
+    let updated_user = app_state.db_client.update_user(&user_id, &user_auth.user.id, body).await
         .map_err(map_sqlx_error)?;
     Ok(
         SuccessResponse::new("Successfully updating user data.", Some(updated_user))
@@ -131,19 +128,18 @@ async fn user_change_password(
 async fn user_follow_unfollow(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>,
-    PathParser(id): PathParser<String>,
+    PathParser(user_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
-    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     let sender_id = user_auth.user.id;
-    if id == sender_id {
+    if user_id == sender_id {
         return Err(HttpError::bad_request(ErrorMessage::RequestInvalid.to_string(), None));
     }
-    user_by_id(&id, app_state.clone()).await?
+    user_by_id(&user_id, app_state.clone()).await?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
-    let message = app_state.db_client.follow_unfollow_user(id, sender_id).await
+    let message = app_state.db_client.follow_unfollow_user(user_id, sender_id).await
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     let response = FollowUnfollowResponse {
-        user_target: id,
+        user_target: user_id,
         user_sender: sender_id,
         message,
     };
@@ -153,14 +149,13 @@ async fn user_follow_unfollow(
 }
 async fn user_connections(
     Extension(app_state): Extension<Arc<AppState>>,
-    PathParser(id): PathParser<String>,
+    PathParser(user_id): PathParser<Uuid>,
     req: Request,
 ) -> HttpResult<impl IntoResponse> {
-    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     let path = req.uri().path().rsplit('/').next().unwrap_or("");
-    user_by_id(&id, app_state.clone()).await?
+    user_by_id(&user_id, app_state.clone()).await?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
-    let result = app_state.db_client.get_user_connections(id, FollowKind::from_str(path).unwrap_or(FollowKind::Following)).await
+    let result = app_state.db_client.get_user_connections(user_id, FollowKind::from_str(path).unwrap_or(FollowKind::Following)).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     Ok(
         SuccessResponse::new("List of user connections.", Some(result))
@@ -169,20 +164,14 @@ async fn user_connections(
 async fn user_delete(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>,
-    PathParser(id): PathParser<String>,
+    PathParser(user_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
-    let id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     let sender_id = user_auth.user.id;
-    if id == sender_id {
+    if user_id == sender_id {
         return Err(HttpError::bad_request(ErrorMessage::RequestInvalid.to_string(), None));
     }
-    app_state.db_client.delete_user(id).await
-        .map_err(|e| {
-            match e {
-                SqlxError::RowNotFound => HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None),
-                _ => HttpError::server_error(ErrorMessage::ServerError.to_string(), None),
-            }
-        })?;
+    app_state.db_client.delete_user(user_id).await
+        .map_err(map_sqlx_error)?;
     Ok(
         SuccessResponse::<()>::new("Successfully deleted a user.", None)
     )

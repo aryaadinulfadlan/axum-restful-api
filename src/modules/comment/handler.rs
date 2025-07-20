@@ -1,14 +1,16 @@
-use axum::{
-    response::IntoResponse,
-    middleware,
-    Router,
-    routing::{delete, get, post, put}
-};
+use std::sync::Arc;
+use axum::{response::IntoResponse, middleware, Router, routing::{delete, get, post, put}, Extension};
+use uuid::Uuid;
+use validator::Validate;
 use crate::{
-    dto::HttpResult,
-    middleware::permission::{
-        check_permission, Permission
-    }
+    dto::{HttpResult, SuccessResponse},
+    middleware::{AuthenticatedUser, permission::{check_permission, Permission}},
+    error::{PathParser, map_sqlx_error, BodyParser, FieldError},
+    modules::comment::{
+        dto::{CommentRequest, NewComment},
+        model::CommentRepository,
+    },
+    AppState
 };
 
 pub fn comment_router() -> Router {
@@ -30,8 +32,22 @@ pub fn comment_router() -> Router {
         })))
 }
 
-async fn comment_create() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn comment_create(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    PathParser(post_id): PathParser<Uuid>,
+    BodyParser(body): BodyParser<CommentRequest>,
+) -> HttpResult<impl IntoResponse> {
+    body.validate().map_err(FieldError::populate_errors)?;
+    let new_comment = NewComment {
+        user_id: user_auth.user.id,
+        post_id,
+        content: body.content,
+    };
+    let result = app_state.db_client.save_comment(post_id, new_comment).await.map_err(map_sqlx_error)?;
+    Ok(
+        SuccessResponse::new("Successfully created a new comment.", Some(result))
+    )
 }
 async fn comment_detail() -> HttpResult<impl IntoResponse> {
     Ok(())

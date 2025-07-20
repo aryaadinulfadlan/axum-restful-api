@@ -49,9 +49,8 @@ async fn post_create(
 }
 async fn post_detail(
     Extension(app_state): Extension<Arc<AppState>>,
-    PathParser(id): PathParser<String>,
+    PathParser(post_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
-    let post_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     let post_detail = app_state.db_client.get_post_detail(post_id).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
@@ -61,9 +60,8 @@ async fn post_detail(
 }
 async fn post_list_by_user(
     Extension(app_state): Extension<Arc<AppState>>,
-    PathParser(id): PathParser<String>,
+    PathParser(user_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
-    let user_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     let post_by_user = app_state.db_client.get_post_list_by_user(user_id).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
@@ -74,10 +72,9 @@ async fn post_list_by_user(
 async fn post_update(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>,
-    PathParser(id): PathParser<String>,
+    PathParser(post_id): PathParser<Uuid>,
     BodyParser(body): BodyParser<PostRequest>,
 ) -> HttpResult<impl IntoResponse> {
-    let post_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     body.validate().map_err(FieldError::populate_errors)?;
     let updated_post = app_state.db_client.update_post(
             post_id, user_auth.user.id, user_auth.user.role_id, body
@@ -89,9 +86,8 @@ async fn post_update(
 async fn post_delete(
     Extension(app_state): Extension<Arc<AppState>>,
     Extension(user_auth): Extension<AuthenticatedUser>,
-    PathParser(id): PathParser<String>,
+    PathParser(post_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
-    let post_id = Uuid::parse_str(id.as_str()).map_err(|e| HttpError::bad_request(e.to_string(), None))?;
     app_state.db_client.delete_post(
             post_id, user_auth.user.id, user_auth.user.role_id
         ).await.map_err(map_sqlx_error)?;
