@@ -8,6 +8,7 @@ use crate::{
         auth::handler::auth_router,
         user::handler::user_router,
         post::handler::post_router,
+        comment::handler::comment_router,
     },
     middleware::auth::{auth_token}
 };
@@ -31,6 +32,7 @@ pub fn create_router(app_state: Arc<AppState>) -> Router {
         .nest("/auth", auth_router())
         .nest("/user", user_router().layer(middleware::from_fn(auth_token)))
         .nest("/post", post_router().layer(middleware::from_fn(auth_token)))
+        .nest("/comment", comment_router().layer(middleware::from_fn(auth_token)))
         .layer(TraceLayer::new_for_http())
         .layer(Extension(app_state));
     Router::new().nest("/api", api_route)

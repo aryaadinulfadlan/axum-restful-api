@@ -29,6 +29,10 @@ pub enum Permission {
     PostDelete,
     PostListByUser,
     CommentCreate,
+    CommentDetail,
+    CommentUpdate,
+    CommentDelete,
+    CommentListByPost,
 }
 
 impl Permission {
@@ -50,6 +54,10 @@ impl Permission {
             Permission::PostDelete => "post:delete".to_string(),
             Permission::PostListByUser => "post:list-by-user".to_string(),
             Permission::CommentCreate => "comment:create".to_string(),
+            Permission::CommentDetail => "comment:detail".to_string(),
+            Permission::CommentUpdate => "comment:update".to_string(),
+            Permission::CommentDelete => "comment:delete".to_string(),
+            Permission::CommentListByPost => "comment:list-by-post".to_string(),
         }
     }
     pub fn from_str(str: &str) -> Option<Self> {
@@ -70,6 +78,10 @@ impl Permission {
             "post:delete" => Some(Permission::PostDelete),
             "post:list-by-user" => Some(Permission::PostListByUser),
             "comment:create" => Some(Permission::CommentCreate),
+            "comment:detail" => Some(Permission::CommentDetail),
+            "comment:update" => Some(Permission::CommentUpdate),
+            "comment:delete" => Some(Permission::CommentDelete),
+            "comment:list-by-post" => Some(Permission::CommentListByPost),
             _ => None,
         }
     }

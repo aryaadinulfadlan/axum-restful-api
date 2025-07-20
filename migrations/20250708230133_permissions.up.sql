@@ -27,4 +27,8 @@ VALUES
     ('b277ca4b-8be4-4119-95e3-26b2089021c5', 'post:update', 'Update or modify an existing post.'),
     ('ea2ab559-3a6b-4320-8d32-41c11b092a44', 'post:delete', 'Remove or delete a post.'),
     ('9c1c850c-f2ff-4d99-a84d-74f3fef78304', 'post:list-by-user', 'Post list by user.'),
-    ('86329004-3735-41ae-93a3-8c0fe965845f', 'comment:create', 'Create a new comment for a post.');
+    ('86329004-3735-41ae-93a3-8c0fe965845f', 'comment:create', 'Create a new comment for a post.'),
+    ('0a36935f-2a6b-4ebd-b75d-1e75a829b146', 'comment:detail', 'Get a comment of a post.'),
+    ('1be5150f-c81f-4e4d-9aab-5e5818bacd38', 'comment:update', 'Update a comment of a post.'),
+    ('84f031ff-b57f-4eba-940f-cce130afd1a0', 'comment:delete', 'Delete a comment of a post.'),
+    ('d44359b7-cc2d-4908-9bbd-188987e77588', 'comment:list-by-post', 'Comment list of a post.');
