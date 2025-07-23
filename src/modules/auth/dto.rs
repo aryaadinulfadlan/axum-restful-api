@@ -78,7 +78,13 @@ pub struct SignInRequest {
 }
 
 #[derive(Serialize)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub token_type: String,
+    pub expires_in: String,
+}
+#[derive(Serialize)]
 pub struct SignInResponse {
     pub user: UserResponse,
-    pub token: String,
+    pub token: TokenResponse,
 }

@@ -7,7 +7,6 @@ use axum::{
     Extension
 };
 use uuid::Uuid;
-use axum_extra::extract::cookie::CookieJar;
 use crate::{
     modules::user::model::UserRepository,
     error::{ErrorMessage, HttpError},
@@ -17,35 +16,34 @@ use crate::{
 };
 use base64::{Engine as _, engine::{general_purpose}};
 
+fn read_header(req: &Request) -> Option<String> {
+    let value = req.headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|auth_header| auth_header.to_str().ok())
+        .and_then(|auth_value| Some(auth_value.to_owned()));
+    value
+}
+
 pub async fn auth_token(
-    cookie_jar: CookieJar,
     Extension(app_state): Extension<Arc<AppState>>,
     mut req: Request,
     next: Next,
 ) -> Result<impl IntoResponse, HttpError<()>> {
-    let cookie_or_header = cookie_jar
-        .get("token")
-        .map(|cookie| cookie.value().to_string())
-        .or_else(|| {
-            req.headers()
-                .get(header::AUTHORIZATION)
-                .and_then(|auth_header| auth_header.to_str().ok())
-                .and_then(|auth_value| Some(auth_value.to_owned()))
-        });
-    let cookie_or_header = cookie_or_header.ok_or(
+    let header_value = read_header(&req);
+    let header_authorization = header_value.ok_or(
         HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None)
     )?;
-    if cookie_or_header.trim().is_empty() {
+    if header_authorization.trim().is_empty() {
         return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
     }
-    let token = if cookie_or_header.starts_with("Bearer ") {
-        let parts: Vec<&str> = cookie_or_header.split_whitespace().collect();
+    let token = if header_authorization.starts_with("Bearer ") {
+        let parts: Vec<&str> = header_authorization.split_whitespace().collect();
         if parts.len() != 2 || parts[0] != "Bearer" {
             return Err(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))
         }
         parts[1].to_string()
     } else {
-        cookie_or_header
+        header_authorization
     };
     let token_user_id = match jwt::parse_token(token, app_state.env.jwt_secret.as_bytes()) {
         Ok(value) => value,
@@ -75,11 +73,8 @@ pub async fn auth_basic(
     req: Request,
     next: Next,
 ) -> Result<impl IntoResponse, HttpError<()>> {
-    let basic_value = req.headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|auth_header| auth_header.to_str().ok())
-        .and_then(|auth_value| Some(auth_value.to_owned()));
-    let basic_value = basic_value.ok_or(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))?;
+    let header_value = read_header(&req);
+    let basic_value = header_value.ok_or(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))?;
     if basic_value.trim().is_empty() {
         return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
     }

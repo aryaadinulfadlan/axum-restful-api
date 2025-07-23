@@ -7,6 +7,7 @@ pub struct Config {
     pub frontend_url: String,
     pub jwt_secret: String,
     pub jwt_max_age: i64,
+    pub refresh_token_age: i64,
     pub max_connections: u32,
     pub min_connections: u32,
     pub acquire_timeout: u64,
@@ -25,6 +26,7 @@ impl Config {
         let frontend_url = var("FRONTEND_URL").expect("FRONTEND_URL must be set");
         let jwt_secret = var("JWT_SECRET_KEY").expect("JWT_SECRET_KEY must be set");
         let jwt_max_age = var("JWT_MAX_AGE").expect("JWT_MAX_AGE must be set");
+        let refresh_token_age = var("REFRESH_TOKEN_AGE").expect("REFRESH_TOKEN_AGE must be set");
         let max_connections = var("MAX_CONNECTIONS").expect("MAX_CONNECTIONS must be set");
         let min_connections = var("MIN_CONNECTIONS").expect("MIN_CONNECTIONS must be set");
         let acquire_timeout = var("ACQUIRE_TIMEOUT").expect("ACQUIRE_TIMEOUT must be set");
@@ -41,6 +43,7 @@ impl Config {
             frontend_url,
             jwt_secret,
             jwt_max_age: jwt_max_age.parse::<i64>().unwrap(),
+            refresh_token_age: refresh_token_age.parse::<i64>().unwrap(),
             max_connections: max_connections.parse::<u32>().unwrap(),
             min_connections: min_connections.parse::<u32>().unwrap(),
             acquire_timeout: acquire_timeout.parse::<u64>().unwrap(),

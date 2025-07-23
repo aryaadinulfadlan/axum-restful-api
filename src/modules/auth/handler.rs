@@ -1,15 +1,16 @@
 use std::sync::Arc;
 use axum::{middleware, Extension, Router, http::{StatusCode, header, HeaderMap}, response::IntoResponse, routing::{post, get}};
-use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::cookie::{Cookie, SameSite, CookieJar};
 use sqlx::{Error as SqlxError};
 use chrono::{Duration, Utc};
+use uuid::Uuid;
 use validator::Validate;
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
     error::{ErrorMessage, ErrorPayload, FieldError, HttpError, BodyParser, QueryParser},
     modules::{
-        auth::dto::{SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest, ResetPasswordQuery, ResetPasswordRequest, SignInResponse},
+        auth::dto::{TokenResponse, SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest, ResetPasswordQuery, ResetPasswordRequest, SignInResponse},
         role::model::{RoleRepository, RoleType},
         email::{
             mail_verification::send_verification_email,
@@ -25,7 +26,8 @@ use crate::{
             NewUserActionToken, 
             UserActionToken, 
             UserActionTokenRepository
-        }  
+        },
+        refresh_token::model::{RefreshToken, RefreshTokenRepository}
     },
     utils::{
         password,
@@ -50,6 +52,8 @@ pub fn auth_router() -> Router {
         .route("/sign-in", post(sign_in))
         .route("/forgot-password", post(forgot_password))
         .route("/reset-password", post(reset_password))
+        .route("/refresh", post(refresh_token))
+        .route("/sign-out", post(sign_out))
 }
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<UserResponse>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
@@ -70,6 +74,53 @@ async fn send_email_verification(email: &str, name: &str, verification_token: &s
         })?;
     Ok(())
 }
+async fn token_handling(
+    user_id: Uuid,
+    app_state: Arc<AppState>
+) -> Result<(String, HeaderMap), HttpError<ErrorPayload>> {
+    let access_token = jwt::create_token(
+        &user_id.to_string(),
+        app_state.env.jwt_secret.as_bytes(),
+        app_state.env.jwt_max_age
+    ).map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let refresh_token = generate_random_string(64);
+    let cookie_duration = time::Duration::days(app_state.env.refresh_token_age);
+    let expires_at = Utc::now() + Duration::days(app_state.env.refresh_token_age);
+    app_state.db_client.refresh_token(user_id, &refresh_token, expires_at).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let cookie = Cookie::build(("refresh_token", refresh_token))
+        .path("/api/auth/refresh")
+        .max_age(cookie_duration)
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Strict)
+        .build();
+    let mut headers = HeaderMap::new();
+    headers.append(
+        header::SET_COOKIE,
+        cookie.to_string().parse().expect("couldn't parse cookie"),
+    );
+    Ok((access_token, headers))
+}
+async fn cookie_handling(
+    cookie_jar: CookieJar,
+    app_state: Arc<AppState>
+) -> Result<RefreshToken, HttpError<ErrorPayload>> {
+    let cookie_value = cookie_jar
+        .get("refresh_token")
+        .map(|cookie| cookie.value().to_string())
+        .ok_or(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))?;
+    if cookie_value.trim().is_empty() {
+        return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
+    }
+    let refresh_token = app_state.db_client.get_refresh_token(&cookie_value).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))?;
+    if Utc::now() > refresh_token.expires_at || refresh_token.revoked {
+        return Err(HttpError::unauthorized(ErrorMessage::TokenExpired.to_string(), None));
+    }
+    Ok(refresh_token)
+}
 
 async fn basic_auth() -> HttpResult<impl IntoResponse> {
     Ok(
@@ -87,7 +138,7 @@ async fn sign_up(
             ErrorMessage::EmailExist.to_string(), None
         ));
     }
-    let verification_token = generate_random_string();
+    let verification_token = generate_random_string(32);
     let expires_at = Utc::now() + Duration::hours(24);
     let hash_password = password::hash(&body.password)
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
@@ -151,7 +202,7 @@ pub async fn resend_activation(
     if user.is_verified {
        return Err(HttpError::bad_request(ErrorMessage::AccountActive.to_string(), None)); 
     }
-    let verification_token = generate_random_string();
+    let verification_token = generate_random_string(32);
     let expires_at = Utc::now() + Duration::hours(24);
     let updated_user_action_token = app_state.db_client.resend_activation(user.id, &verification_token, expires_at).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
@@ -177,27 +228,19 @@ async fn sign_in(
     if !password_matched {
         return Err(HttpError::bad_request(ErrorMessage::WrongCredentials.to_string(), None));
     }
-    let token = jwt::create_token(
-        &user.id.to_string(),
-        &app_state.env.jwt_secret.as_bytes(),
-        app_state.env.jwt_max_age
-    ).map_err(|e| HttpError::server_error(e.to_string(), None))?;
-    let cookie_duration = time::Duration::hours(6);
-    let cookie = Cookie::build(("token", token.clone()))
-        .path("/")
-        .max_age(cookie_duration)
-        .http_only(true)
-        .build();
-    let mut headers = HeaderMap::new();
-    headers.append(
-        header::SET_COOKIE,
-        cookie.to_string().parse().expect("couldn't parse cookie"),
-    );
+    let (access_token, headers) = token_handling(user.id, app_state).await?;
     let sign_in_response = SignInResponse {
         user,
-        token,
+        token: TokenResponse {
+            access_token,
+            token_type: String::from("Bearer"),
+            expires_in: "60 Minutes".to_string(),
+        },
     };
-    let mut response = SuccessResponse::new("Login is successfully.", Some(sign_in_response)).into_response();
+    let mut response = SuccessResponse::new(
+        "Login is successfully.",
+        Some(sign_in_response)
+    ).into_response();
     response.headers_mut().extend(headers);
     Ok(response)
 }
@@ -212,7 +255,7 @@ async fn forgot_password(
     if !user.is_verified {
         return Err(HttpError::bad_request(ErrorMessage::AccountNotActive.to_string(), None));
     }
-    let verification_token = generate_random_string();
+    let verification_token = generate_random_string(32);
     let expires_at = Utc::now() + Duration::hours(2);
     let new_user_action = NewUserActionToken {
         token: &verification_token,
@@ -250,4 +293,50 @@ async fn reset_password(
         .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let user_response = UserResponse::get_user_response(&user, role_type);
     Ok(SuccessResponse::new("Password has been successfully changed. Please Login.", Some(user_response)))
+}
+
+async fn refresh_token(
+    cookie_jar: CookieJar,
+    Extension(app_state): Extension<Arc<AppState>>,
+) -> HttpResult<impl IntoResponse> {
+    let refresh_token_data = cookie_handling(cookie_jar, app_state.clone()).await?;
+    let (access_token, headers) = token_handling(refresh_token_data.user_id, app_state).await?;
+    let refresh_token_response = TokenResponse {
+        access_token,
+        token_type: String::from("Bearer"),
+        expires_in: "60 Minutes".to_string(),
+    };
+    let mut response = SuccessResponse::new(
+        "Refresh Token is successfully.",
+        Some(refresh_token_response)
+    ).into_response();
+    response.headers_mut().extend(headers);
+    Ok(response)
+}
+
+async fn sign_out(
+    cookie_jar: CookieJar,
+    Extension(app_state): Extension<Arc<AppState>>,
+) -> HttpResult<impl IntoResponse> {
+    let refresh_token_data = cookie_handling(cookie_jar, app_state.clone()).await?;
+    app_state.db_client.revoke_token(refresh_token_data.user_id).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let expired_cookie = Cookie::build(("refresh_token", ""))
+        .path("/api/auth/refresh")
+        .max_age(time::Duration::seconds(0))
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Strict)
+        .build();
+    let mut headers = HeaderMap::new();
+    headers.append(
+        header::SET_COOKIE,
+        expired_cookie.to_string().parse().expect("couldn't parse cookie"),
+    );
+    let mut response = SuccessResponse::<()>::new(
+        "Logout is successfully.",
+        None
+    ).into_response();
+    response.headers_mut().extend(headers);
+    Ok(response)
 }
