@@ -27,14 +27,14 @@ use crate::{
             UserActionToken, 
             UserActionTokenRepository
         },
-        refresh_token::model::{RefreshToken, RefreshTokenRepository}
+        refresh_token::model::{RefreshTokenRepository}
     },
     utils::{
         password,
         rand::generate_random_string,
         jwt
     },
-    middleware::auth::auth_basic
+    middleware::{AuthenticatedUser, auth::{auth_basic, auth_token}}
 };
 
 pub fn auth_router() -> Router {
@@ -53,7 +53,7 @@ pub fn auth_router() -> Router {
         .route("/forgot-password", post(forgot_password))
         .route("/reset-password", post(reset_password))
         .route("/refresh", post(refresh_token))
-        .route("/sign-out", post(sign_out))
+        .route("/sign-out", post(sign_out).layer(middleware::from_fn(auth_token)))
 }
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<UserResponse>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
@@ -101,25 +101,6 @@ async fn token_handling(
         cookie.to_string().parse().expect("couldn't parse cookie"),
     );
     Ok((access_token, headers))
-}
-async fn cookie_handling(
-    cookie_jar: CookieJar,
-    app_state: Arc<AppState>
-) -> Result<RefreshToken, HttpError<ErrorPayload>> {
-    let cookie_value = cookie_jar
-        .get("refresh_token")
-        .map(|cookie| cookie.value().to_string())
-        .ok_or(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))?;
-    if cookie_value.trim().is_empty() {
-        return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
-    }
-    let refresh_token = app_state.db_client.get_refresh_token(&cookie_value).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
-        .ok_or(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))?;
-    if Utc::now() > refresh_token.expires_at || refresh_token.revoked {
-        return Err(HttpError::unauthorized(ErrorMessage::TokenExpired.to_string(), None));
-    }
-    Ok(refresh_token)
 }
 
 async fn basic_auth() -> HttpResult<impl IntoResponse> {
@@ -299,7 +280,19 @@ async fn refresh_token(
     cookie_jar: CookieJar,
     Extension(app_state): Extension<Arc<AppState>>,
 ) -> HttpResult<impl IntoResponse> {
-    let refresh_token_data = cookie_handling(cookie_jar, app_state.clone()).await?;
+    let cookie_value = cookie_jar
+        .get("refresh_token")
+        .map(|cookie| cookie.value().to_string())
+        .ok_or(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))?;
+    if cookie_value.trim().is_empty() {
+        return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
+    }
+    let refresh_token_data = app_state.db_client.get_refresh_token(&cookie_value).await
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .ok_or(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))?;
+    if Utc::now() > refresh_token_data.expires_at || refresh_token_data.revoked {
+        return Err(HttpError::unauthorized(ErrorMessage::TokenExpired.to_string(), None));
+    }
     let (access_token, headers) = token_handling(refresh_token_data.user_id, app_state).await?;
     let refresh_token_response = TokenResponse {
         access_token,
@@ -315,11 +308,10 @@ async fn refresh_token(
 }
 
 async fn sign_out(
-    cookie_jar: CookieJar,
     Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>
 ) -> HttpResult<impl IntoResponse> {
-    let refresh_token_data = cookie_handling(cookie_jar, app_state.clone()).await?;
-    app_state.db_client.revoke_token(refresh_token_data.user_id).await
+    app_state.db_client.revoke_token(user_auth.user.id).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let expired_cookie = Cookie::build(("refresh_token", ""))
         .path("/api/auth/refresh")
