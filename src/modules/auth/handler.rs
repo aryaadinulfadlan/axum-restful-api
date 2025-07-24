@@ -325,6 +325,7 @@ async fn sign_out(
         header::SET_COOKIE,
         expired_cookie.to_string().parse().expect("couldn't parse cookie"),
     );
+    let _ = app_state.redis_client.delete_user(&user_auth.user.id).await;
     let mut response = SuccessResponse::<()>::new(
         "Logout is successfully.",
         None
