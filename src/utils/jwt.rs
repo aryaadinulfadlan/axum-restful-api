@@ -23,7 +23,7 @@ pub struct TokenClaims{
 pub fn create_token(
     user_id: &str,
     secret: &[u8],
-    expires_in_minutes: i64,
+    expires_in_seconds: i64,
 ) -> Result<String, JwtError> {
     if user_id.is_empty() {
         return Err(JwtErrorKind::InvalidSubject.into());
@@ -32,7 +32,7 @@ pub fn create_token(
     let claims = TokenClaims {
         sub: user_id.to_string(),
         iat: now.timestamp() as usize,
-        exp: (now + Duration::minutes(expires_in_minutes)).timestamp() as usize,
+        exp: (now + Duration::seconds(expires_in_seconds)).timestamp() as usize,
         nbf: now.timestamp() as usize,
     };
     encode(
@@ -46,10 +46,12 @@ pub fn parse_token(
     token: impl Into<String>,
     secret: &[u8]
 ) -> Result<String, HttpError<()>> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.leeway = 0;
     let decode = decode::<TokenClaims>(
         &token.into(),
         &DecodingKey::from_secret(secret),
-        &Validation::new(Algorithm::HS256),
+        &validation,
     );
     match decode {
         Ok(token) => Ok(token.claims.sub),

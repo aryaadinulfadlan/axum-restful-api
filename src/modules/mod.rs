@@ -7,3 +7,4 @@ pub mod user_action_token;
 pub mod post;
 pub mod comment;
 pub mod refresh_token;
+pub mod redis;

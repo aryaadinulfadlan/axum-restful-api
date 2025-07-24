@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::prelude::*;
-use serde::{Serialize};
+use serde::{Deserialize, Serialize};
 use sqlx::{query, query_as, query_scalar, Error as SqlxError, FromRow, Postgres, QueryBuilder};
 use uuid::Uuid;
 use crate::{
@@ -14,13 +14,12 @@ use crate::{
     error::{ErrorMessage}
 };
 
-#[derive(Serialize, FromRow, Clone)]
+#[derive(Serialize, Deserialize, FromRow, Clone)]
 pub struct User {
     pub id: Uuid,
     pub role_id: Uuid,
     pub name: String,
     pub email: String,
-    #[serde(skip_serializing)]
     pub password: String,
     pub is_verified: bool,
     pub created_at: DateTime<Utc>,

@@ -10,6 +10,7 @@ use config::Config;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::filter::LevelFilter;
 use db::DBClient;
+use crate::modules::redis::redis::RedisClient;
 
 mod dto;
 mod error;
@@ -24,6 +25,7 @@ mod middleware;
 pub struct AppState {
     pub env: Config,
     pub db_client: DBClient,
+    pub redis_client: RedisClient,
 }
 #[tokio::main]
 async fn main() {
@@ -38,6 +40,7 @@ async fn main() {
     let min_connections = &config.min_connections;
     let acquire_timeout = &config.acquire_timeout;
     let idle_timeout = &config.idle_timeout;
+    let redis_url = &config.redis_url;
     let cors = CorsLayer::new()
         .allow_origin(frontend_url.parse::<HeaderValue>().unwrap())
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE])
@@ -62,11 +65,13 @@ async fn main() {
         }
     };
     let db_client = DBClient::new(pool);
-    let app_state = AppState {
+    let redis_client = RedisClient::new(redis_url).await.expect("Failed to connect to Redis.");
+    let app_state = Arc::new(AppState {
         env: config.clone(),
         db_client,
-    };
-    let app = router::create_router(Arc::new(app_state)).layer(cors);
+        redis_client,
+    });
+    let app = router::create_router(app_state).layer(cors);
     println!("🚀 Server is running on http://localhost:{}", &config.port);
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", &config.port))
         .await.expect("Failed to bind address");

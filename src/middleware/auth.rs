@@ -36,15 +36,11 @@ pub async fn auth_token(
     if header_authorization.trim().is_empty() {
         return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
     }
-    let token = if header_authorization.starts_with("Bearer ") {
-        let parts: Vec<&str> = header_authorization.split_whitespace().collect();
-        if parts.len() != 2 || parts[0] != "Bearer" {
-            return Err(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))
-        }
-        parts[1].to_string()
-    } else {
-        header_authorization
-    };
+    let parts: Vec<&str> = header_authorization.split_whitespace().collect();
+    if parts.len() != 2 || parts[0] != "Bearer" {
+        return Err(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))
+    }
+    let token = parts[1].to_string();
     let token_user_id = match jwt::parse_token(token, app_state.env.jwt_secret.as_bytes()) {
         Ok(value) => value,
         Err(_) => {
@@ -52,18 +48,21 @@ pub async fn auth_token(
         }
     };
     let user_id = Uuid::parse_str(token_user_id.as_str())
-        .map_err(|_| {
-            HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None)
-        })?;
-    let user = app_state.db_client.get_user_by_id(&user_id).await
-        .map_err(|_| {
-            HttpError::unauthorized(ErrorMessage::UserNoLongerExist.to_string(), None)
-        })?
-        .ok_or_else(|| {
-            HttpError::unauthorized(ErrorMessage::UserNoLongerExist.to_string(), None)
-        })?;
+        .map_err(|_| HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))?;
+    let cached_user = app_state.redis_client.get_user(&user_id).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+    let user_data = match cached_user {
+        Some(data) => data,
+        None => {
+            let user = app_state.db_client.get_user_by_id(&user_id).await
+                .map_err(|_| HttpError::unauthorized(ErrorMessage::UserNoLongerExist.to_string(), None))?
+                .ok_or_else(|| HttpError::unauthorized(ErrorMessage::UserNoLongerExist.to_string(), None))?;
+            let _ = app_state.redis_client.set_user(&user, app_state.env.jwt_max_age as u64).await;
+            user
+        }
+    };
     req.extensions_mut().insert(AuthenticatedUser {
-        user,
+        user: user_data,
     });
     Ok(next.run(req).await)
 }
