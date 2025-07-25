@@ -1,13 +1,14 @@
 use core::str;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 use crate::{
-    modules::{user::model::{User}, role::model::RoleType,}, 
+    modules::{user::model::{User}, role::model::RoleType},
     dto::{default_limit, default_page, default_order_by},
 };
+use crate::modules::comment::model::Comment;
 
 #[derive(Serialize, FromRow)]
 pub struct UserResponse {
@@ -20,6 +21,20 @@ pub struct UserResponse {
     pub is_verified: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+#[derive(Serialize, FromRow)]
+pub struct UserFeeds {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub posted_by: String,
+    pub comments_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    // #[serde(default)]
+    // pub comments: Vec<Comment>,
 }
 
 impl UserResponse {
@@ -85,10 +100,18 @@ fn validate_order_by(value: &str) -> Result<(), ValidationError> {
         }
     }
 }
+pub fn validate_optional_date(value: &str) -> Result<(), ValidationError> {
+    if NaiveDate::parse_from_str(value, "%Y-%m-%d").is_err() {
+        let mut err = ValidationError::new("invalid_date_format");
+        err.message = Some("must be in YYYY-MM-DD format".into());
+        return Err(err);
+    }
+    Ok(())
+}
 
 
 #[derive(Deserialize, Validate)]
-pub struct UserParams {
+pub struct UserListParams {
     #[serde(default = "default_limit")]
     #[validate(range(min = 1, message = "Limit is minimum 1."))]
     pub limit: Option<usize>,
@@ -101,6 +124,24 @@ pub struct UserParams {
     #[validate(length(min = 1, message = "Search must be at least 1 character."))]
     pub search: Option<String>,
     pub is_verified: Option<bool>,
+}
+#[derive(Deserialize, Validate)]
+pub struct UserFeedParams {
+    #[serde(default = "default_limit")]
+    #[validate(range(min = 1, message = "Limit is minimum 1."))]
+    pub limit: Option<usize>,
+    #[serde(default = "default_page")]
+    #[validate(range(min = 1, message = "Page is minimum 1."))]
+    pub page: Option<usize>,
+    #[serde(default = "default_order_by")]
+    #[validate(custom(function = "validate_order_by"))]
+    pub order_by: Option<String>,
+    #[validate(length(min = 1, message = "Search must be at least 1 character."))]
+    pub search: Option<String>,
+    #[validate(custom(function = "validate_optional_date"))]
+    pub since: Option<String>,
+    #[validate(custom(function = "validate_optional_date"))]
+    pub until: Option<String>,
 }
 
 #[derive(Serialize)]

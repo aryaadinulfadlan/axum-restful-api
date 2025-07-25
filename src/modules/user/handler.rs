@@ -13,7 +13,7 @@ use crate::{
         permission::{check_permission, Permission}
     },
     modules::{
-        user::{dto::{UserParams, FollowUnfollowResponse, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest, FollowKind}, model::{UserRepository, User}},
+        user::{dto::{UserListParams, UserFeedParams, FollowUnfollowResponse, UserResponse, UserUpdateRequest, UserPasswordUpdateRequest, FollowKind}, model::{UserRepository, User}},
         role::model::RoleRepository,
     },
     error::{map_sqlx_error, FieldError, ErrorPayload, QueryParser, HttpError, ErrorMessage, PathParser, BodyParser},
@@ -74,7 +74,7 @@ async fn user_self(
 }
 async fn user_list(
     Extension(app_state): Extension<Arc<AppState>>,
-    QueryParser(query_params): QueryParser<UserParams>
+    QueryParser(query_params): QueryParser<UserListParams>
 ) -> HttpResult<impl IntoResponse> {
     query_params.validate().map_err(FieldError::populate_errors)?;
     let result = app_state.db_client.get_users(query_params).await
@@ -176,6 +176,15 @@ async fn user_delete(
         SuccessResponse::<()>::new("Successfully deleted a user.", None)
     )
 }
-async fn user_feeds() -> HttpResult<impl IntoResponse> {
-    Ok(())
+async fn user_feeds(
+    Extension(app_state): Extension<Arc<AppState>>,
+    Extension(user_auth): Extension<AuthenticatedUser>,
+    QueryParser(query_params): QueryParser<UserFeedParams>
+) -> HttpResult<impl IntoResponse> {
+    query_params.validate().map_err(FieldError::populate_errors)?;
+    let result = app_state.db_client.get_user_feeds(user_auth.user.id, query_params).await
+        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        // .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let response = SuccessResponse::new("Getting user feeds data", Some(result));
+    Ok(response)
 }

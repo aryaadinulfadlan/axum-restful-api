@@ -8,7 +8,7 @@ use crate::{
     modules::{
         role::model::{RoleType, RoleRepository},
         user_action_token::model::NewUserActionToken,
-        user::dto::{UserResponse, UserParams, UserUpdateRequest, FollowKind},
+        user::dto::{UserResponse, UserListParams, UserUpdateRequest, FollowKind, UserFeedParams, UserFeeds},
     },
     dto::{PaginatedData, PaginationMeta},
     error::{ErrorMessage}
@@ -59,7 +59,8 @@ pub trait UserRepository {
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>, SqlxError>;
     async fn get_user_by_email(&self, email: &str) -> Result<Option<UserResponse>, SqlxError>;
     async fn save_user<'a, 'b>(&self, user_data: NewUser<'a>, user_action_data: NewUserActionToken<'b>) -> Result<(User, RoleType), SqlxError>;
-    async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
+    async fn get_user_feeds(&self, user_id: Uuid, user_feed_params: UserFeedParams) -> Result<PaginatedData<UserFeeds>, SqlxError>;
+    async fn get_users(&self, user_params: UserListParams) -> Result<PaginatedData<UserResponse>, SqlxError>;
     async fn get_user_detail(&self, user_id: &Uuid) -> Result<Option<UserDetail>, SqlxError>;
     async fn update_user(&self, user_id: &Uuid, auth_user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
     async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError>;
@@ -128,16 +129,114 @@ impl UserRepository for DBClient {
             }
         }
     }
-    async fn get_users(&self, user_params: UserParams) -> Result<PaginatedData<UserResponse>, SqlxError> {
+    async fn get_user_feeds(&self, user_id: Uuid, user_feed_params: UserFeedParams) -> Result<PaginatedData<UserFeeds>, SqlxError> {
+        let limit = user_feed_params.limit.unwrap_or(1) as i32;
+        let page = user_feed_params.page.unwrap_or(1) as i32;
+        let offset = (page - 1) * limit;
+        let order_by = user_feed_params.order_by.unwrap_or("DESC".to_string());
+
+        let mut query_builder_items: QueryBuilder<Postgres> = QueryBuilder::new(
+            "\
+            SELECT p.id, p.user_id, p.title, p.content, p.tags, u.name AS posted_by, p.created_at, p.updated_at, COUNT(c.id) AS comments_count \
+            FROM posts AS p \
+            JOIN users AS u ON u.id = p.user_id \
+            LEFT JOIN comments AS c ON c.post_id = p.id \
+            LEFT JOIN user_followers AS uf ON uf.following_id = u.id
+            "
+        );
+        query_builder_items
+            .push(" WHERE (p.user_id = ")
+            .push_bind(user_id)
+            .push(" OR uf.follower_id = ")
+            .push_bind(user_id)
+            .push(")");
+        let mut query_builder_count: QueryBuilder<Postgres> = QueryBuilder::new(
+            "\
+            SELECT COUNT(DISTINCT p.id) \
+            FROM posts AS p \
+            JOIN users AS u ON u.id = p.user_id \
+            LEFT JOIN comments AS c ON c.post_id = p.id \
+            LEFT JOIN user_followers AS uf ON uf.following_id = u.id
+            "
+        );
+        query_builder_count
+            .push(" WHERE (p.user_id = ")
+            .push_bind(user_id)
+            .push(" OR uf.follower_id = ")
+            .push_bind(user_id)
+            .push(")");
+        if let Some(search) = user_feed_params.search {
+            query_builder_items
+                .push(" AND (p.title ILIKE ")
+                .push_bind(format!("%{}%", search))
+                .push(" OR p.content ILIKE ")
+                .push_bind(format!("%{}%", search))
+                .push(")");
+            query_builder_count
+                .push(" AND (p.title ILIKE ")
+                .push_bind(format!("%{}%", search))
+                .push(" OR p.content ILIKE ")
+                .push_bind(format!("%{}%", search))
+                .push(")");
+        }
+        if let (Some(since_str), Some(until_str)) = (&user_feed_params.since, &user_feed_params.until) {
+            if let (Ok(since_naive), Ok(until_naive)) = (
+                NaiveDate::parse_from_str(since_str, "%Y-%m-%d"),
+                NaiveDate::parse_from_str(until_str, "%Y-%m-%d"),
+            ) {
+                let since_utc: DateTime<Utc> = Utc.from_utc_datetime(&since_naive.and_hms_opt(0, 0, 0).unwrap());
+                let until_utc: DateTime<Utc> = Utc.from_utc_datetime(&until_naive.and_hms_opt(23, 59, 59).unwrap());
+                query_builder_items
+                    .push(" AND (p.created_at BETWEEN ")
+                    .push_bind(since_utc)
+                    .push(" AND ")
+                    .push_bind(until_utc)
+                    .push(")");
+                query_builder_count
+                    .push(" AND (p.created_at BETWEEN ")
+                    .push_bind(since_utc)
+                    .push(" AND ")
+                    .push_bind(until_utc)
+                    .push(")");
+            }
+        }
+        query_builder_items
+            .push(" GROUP BY p.id, u.name")
+            .push(" ORDER BY p.created_at ")
+            .push(order_by)
+            .push(" LIMIT ")
+            .push_bind(limit)
+            .push(" OFFSET ")
+            .push_bind(offset);
+        let query_items = query_builder_items.build_query_as::<UserFeeds>();
+        let query_count = query_builder_count.build_query_scalar::<i64>();
+        let feeds = query_items.fetch_all(&self.pool).await?;
+        let total_items = query_count.fetch_one(&self.pool).await?;
+        let pagination = PaginationMeta::new(page, limit, total_items);
+        let paginated_data = PaginatedData {
+            items: feeds,
+            pagination,
+        };
+        Ok(paginated_data)
+    }
+    async fn get_users(&self, user_params: UserListParams) -> Result<PaginatedData<UserResponse>, SqlxError> {
         let limit = user_params.limit.unwrap_or(1) as i32;
         let page = user_params.page.unwrap_or(1) as i32;
         let offset = (page - 1) * limit;
         let order_by = user_params.order_by.unwrap_or("DESC".to_string());
         
         let mut query_builder_items: QueryBuilder<Postgres> = QueryBuilder::new(
-            "SELECT u.id, u.name AS name, u.email, r.name AS role, u.password, u.is_verified, u.created_at, u.updated_at FROM users AS u JOIN roles AS r ON r.id = u.role_id"
+            "\
+            SELECT u.id, u.name AS name, u.email, r.name AS role, u.password, u.is_verified, u.created_at, u.updated_at \
+            FROM users AS u JOIN roles AS r ON r.id = u.role_id\
+            "
         );
-        let mut query_builder_count: QueryBuilder<Postgres> = QueryBuilder::new("SELECT COUNT(DISTINCT u.id) FROM users AS u JOIN roles AS r ON r.id = u.role_id");
+        let mut query_builder_count: QueryBuilder<Postgres> = QueryBuilder::new(
+            "\
+            SELECT COUNT(DISTINCT u.id) \
+            FROM users AS u JOIN roles AS r ON r.id = u.role_id\
+            "
+        );
         let mut has_where = false;
         if let Some(is_verified) = user_params.is_verified {
             query_builder_items
