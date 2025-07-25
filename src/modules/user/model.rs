@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -8,7 +9,8 @@ use crate::{
     modules::{
         role::model::{RoleType, RoleRepository},
         user_action_token::model::NewUserActionToken,
-        user::dto::{UserResponse, UserListParams, UserUpdateRequest, FollowKind, UserFeedParams, UserFeeds},
+        user::dto::{UserResponse, UserListParams, UserUpdateRequest, FollowKind, UserFeedParams, UserFeeds, UserFeedRow},
+        comment::model::Comment
     },
     dto::{PaginatedData, PaginationMeta},
     error::{ErrorMessage}
@@ -134,7 +136,7 @@ impl UserRepository for DBClient {
         let page = user_feed_params.page.unwrap_or(1) as i32;
         let offset = (page - 1) * limit;
         let order_by = user_feed_params.order_by.unwrap_or("DESC".to_string());
-
+        let mut transaction = self.pool.begin().await?;
         let mut query_builder_items: QueryBuilder<Postgres> = QueryBuilder::new(
             "\
             SELECT p.id, p.user_id, p.title, p.content, p.tags, u.name AS posted_by, p.created_at, p.updated_at, COUNT(c.id) AS comments_count \
@@ -208,13 +210,40 @@ impl UserRepository for DBClient {
             .push_bind(limit)
             .push(" OFFSET ")
             .push_bind(offset);
-        let query_items = query_builder_items.build_query_as::<UserFeeds>();
+        let query_items = query_builder_items.build_query_as::<UserFeedRow>();
         let query_count = query_builder_count.build_query_scalar::<i64>();
-        let feeds = query_items.fetch_all(&self.pool).await?;
-        let total_items = query_count.fetch_one(&self.pool).await?;
+        let feed_rows = query_items.fetch_all(&mut *transaction).await?;
+        let total_items = query_count.fetch_one(&mut *transaction).await?;
+        let post_ids: Vec<Uuid> = feed_rows.iter().map(|feed| feed.id).collect();
+        let comments = query_as!(
+            Comment,
+            r#"
+                SELECT * FROM comments WHERE post_id = ANY($1)
+            "#,
+            &post_ids
+        ).fetch_all(&mut *transaction).await?;
+        let mut comment_map: HashMap<Uuid, Vec<Comment>> = HashMap::new();
+        for comment in comments {
+            comment_map.entry(comment.post_id).or_insert_with(Vec::new).push(comment);
+        }
+        let feeds_with_comments: Vec<UserFeeds> = feed_rows
+            .into_iter()
+            .map(|row| UserFeeds {
+                id: row.id,
+                user_id: row.user_id,
+                title: row.title,
+                content: row.content,
+                tags: row.tags,
+                posted_by: row.posted_by,
+                comments_count: row.comments_count,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+                comments: comment_map.remove(&row.id).unwrap_or_default(),
+            }).collect();
+        transaction.commit().await?;
         let pagination = PaginationMeta::new(page, limit, total_items);
         let paginated_data = PaginatedData {
-            items: feeds,
+            items: feeds_with_comments,
             pagination,
         };
         Ok(paginated_data)
@@ -224,7 +253,7 @@ impl UserRepository for DBClient {
         let page = user_params.page.unwrap_or(1) as i32;
         let offset = (page - 1) * limit;
         let order_by = user_params.order_by.unwrap_or("DESC".to_string());
-        
+        let mut transaction = self.pool.begin().await?;
         let mut query_builder_items: QueryBuilder<Postgres> = QueryBuilder::new(
             "\
             SELECT u.id, u.name AS name, u.email, r.name AS role, u.password, u.is_verified, u.created_at, u.updated_at \
@@ -285,8 +314,9 @@ impl UserRepository for DBClient {
             .push_bind(offset);
         let query_items = query_builder_items.build_query_as::<UserResponse>();
         let query_count = query_builder_count.build_query_scalar::<i64>();
-        let users = query_items.fetch_all(&self.pool).await?;
-        let total_items = query_count.fetch_one(&self.pool).await?;
+        let users = query_items.fetch_all(&mut *transaction).await?;
+        let total_items = query_count.fetch_one(&mut *transaction).await?;
+        transaction.commit().await?;
         let pagination = PaginationMeta::new(page, limit, total_items);
         let paginated_data = PaginatedData {
             items: users,

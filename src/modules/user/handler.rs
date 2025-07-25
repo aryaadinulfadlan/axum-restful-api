@@ -183,8 +183,7 @@ async fn user_feeds(
 ) -> HttpResult<impl IntoResponse> {
     query_params.validate().map_err(FieldError::populate_errors)?;
     let result = app_state.db_client.get_user_feeds(user_auth.user.id, query_params).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
-        // .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let response = SuccessResponse::new("Getting user feeds data", Some(result));
     Ok(response)
 }

@@ -5,10 +5,13 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 use crate::{
-    modules::{user::model::{User}, role::model::RoleType},
+    modules::{
+        user::model::{User},
+        role::model::RoleType,
+        comment::model::Comment,
+    },
     dto::{default_limit, default_page, default_order_by},
 };
-use crate::modules::comment::model::Comment;
 
 #[derive(Serialize, FromRow)]
 pub struct UserResponse {
@@ -33,8 +36,19 @@ pub struct UserFeeds {
     pub comments_count: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    // #[serde(default)]
-    // pub comments: Vec<Comment>,
+    pub comments: Vec<Comment>,
+}
+#[derive(FromRow)]
+pub struct UserFeedRow {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub posted_by: String,
+    pub comments_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl UserResponse {
