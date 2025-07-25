@@ -17,7 +17,7 @@ pub struct Config {
     pub redis_url: String,
     pub redis_db: u32,
     pub rate_limiter_max: u32,
-    pub rate_limiter_duration: u32,
+    pub rate_limiter_duration: i64,
 }
 
 impl Config {
@@ -53,7 +53,7 @@ impl Config {
             redis_url,
             redis_db: redis_db.parse::<u32>().unwrap(),
             rate_limiter_max: rate_limiter_max.parse::<u32>().unwrap(),
-            rate_limiter_duration: rate_limiter_duration.parse::<u32>().unwrap(),
+            rate_limiter_duration: rate_limiter_duration.parse::<i64>().unwrap(),
         }
     }
 }

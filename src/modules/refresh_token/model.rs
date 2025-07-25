@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sqlx::{query, query_as, Error as SqlxError};
+use serde::Serialize;
+use sqlx::{query, query_as, Error as SqlxError, FromRow};
 use uuid::Uuid;
 use crate::db::DBClient;
 
+#[derive(Serialize, FromRow)]
 pub struct RefreshToken {
     pub user_id: Uuid,
     pub token: String,

@@ -17,14 +17,14 @@ validator = {version = "0.20.0", features = ["derive"]}
 axum = "0.8.4"
 axum-extra = {version = "0.10.1", features = ["cookie"]}
 tokio = {version = "1.46.1", features = ["full"]}
-tower = "0.5.2"
 time = "0.3.41"
 tower-http = {version = "0.6.6", features = ["cors", "trace"]}
 tracing-subscriber = {version = "0.3.19"}
 lettre = "0.11.17"
 redis = {version = "0.32.3", features = ["tokio-comp", "uuid"]}
 deadpool-redis = "0.22.0"
-rand = "0.9.1"
+rand = "0.9.2"
 base64 = "0.22.1"
 thiserror = "2.0.12"
 log = "0.4.27"
+reqwest = { version = "0.12.22", features = ["json"] }

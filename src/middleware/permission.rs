@@ -60,31 +60,6 @@ impl Permission {
             Permission::CommentListByPost => "comment:list-by-post".to_string(),
         }
     }
-    pub fn from_str(str: &str) -> Option<Self> {
-        match str {
-            "user:self" => Some(Permission::UserSelf),
-            "user:update" => Some(Permission::UserUpdate),
-            "user:list" => Some(Permission::UserList),
-            "user:detail" => Some(Permission::UserDetail),
-            "user:follow" => Some(Permission::UserFollow),
-            "user:followers" => Some(Permission::UserFollowers),
-            "user:following" => Some(Permission::UserFollowing),
-            "user:feed" => Some(Permission::UserFeed),
-            "user:delete" => Some(Permission::UserDelete),
-            "user:change-password" => Some(Permission::UserChangePassword),
-            "post:create" => Some(Permission::PostCreate),
-            "post:detail" => Some(Permission::PostDetail),
-            "post:update" => Some(Permission::PostUpdate),
-            "post:delete" => Some(Permission::PostDelete),
-            "post:list-by-user" => Some(Permission::PostListByUser),
-            "comment:create" => Some(Permission::CommentCreate),
-            "comment:detail" => Some(Permission::CommentDetail),
-            "comment:update" => Some(Permission::CommentUpdate),
-            "comment:delete" => Some(Permission::CommentDelete),
-            "comment:list-by-post" => Some(Permission::CommentListByPost),
-            _ => None,
-        }
-    }
 }
 
 pub async fn check_permission(

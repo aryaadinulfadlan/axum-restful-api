@@ -115,12 +115,6 @@ pub enum FollowKind {
     Followers,
 }
 impl FollowKind {
-    pub fn to_string(&self) -> String {
-        match self {
-            FollowKind::Following => "following".to_string(),
-            FollowKind::Followers => "followers".to_string(),
-        }
-    }
     pub fn from_str(str: &str) -> Option<Self> {
         match str {
             "following" => Some(FollowKind::Following),
