@@ -143,10 +143,12 @@ impl UserRepository for DBClient {
             FROM posts AS p \
             JOIN users AS u ON u.id = p.user_id \
             LEFT JOIN comments AS c ON c.post_id = p.id \
-            LEFT JOIN user_followers AS uf ON uf.following_id = u.id
+            LEFT JOIN user_followers AS uf ON uf.following_id = p.user_id AND uf.follower_id =
             "
         );
         query_builder_items
+            .push(" ")
+            .push_bind(user_id)
             .push(" WHERE (p.user_id = ")
             .push_bind(user_id)
             .push(" OR uf.follower_id = ")
@@ -158,10 +160,12 @@ impl UserRepository for DBClient {
             FROM posts AS p \
             JOIN users AS u ON u.id = p.user_id \
             LEFT JOIN comments AS c ON c.post_id = p.id \
-            LEFT JOIN user_followers AS uf ON uf.following_id = u.id
+            LEFT JOIN user_followers AS uf ON uf.following_id = p.user_id AND uf.follower_id =
             "
         );
         query_builder_count
+            .push(" ")
+            .push_bind(user_id)
             .push(" WHERE (p.user_id = ")
             .push_bind(user_id)
             .push(" OR uf.follower_id = ")
