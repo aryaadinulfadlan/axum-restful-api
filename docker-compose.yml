@@ -35,6 +35,20 @@ services:
     networks:
       - app_network
 
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:root@axum_postgres:5432/axum_restful
+    command: [ "sqlx", "migrate", "run" ]
+    networks:
+      - app_network
+
   app:
     build:
       context: .
