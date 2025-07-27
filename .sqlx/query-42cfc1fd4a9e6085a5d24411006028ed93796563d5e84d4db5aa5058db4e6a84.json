@@ -1,0 +1,61 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT u.id, u.name AS name, u.email, r.name AS \"role: RoleType\", u.is_verified\n                    FROM users AS u\n                        JOIN roles AS r ON r.id = u.role_id\n                        JOIN user_followers AS uf ON uf.follower_id = u.id\n                    WHERE uf.following_id = $1;\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role: RoleType",
+        "type_info": {
+          "Custom": {
+            "name": "role_type",
+            "kind": {
+              "Enum": [
+                "admin",
+                "user"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_verified",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "42cfc1fd4a9e6085a5d24411006028ed93796563d5e84d4db5aa5058db4e6a84"
+}

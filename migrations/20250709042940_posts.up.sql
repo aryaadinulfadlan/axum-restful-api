@@ -13,47 +13,86 @@ CREATE TABLE IF NOT EXISTS posts (
      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-INSERT INTO posts (id, user_id, title, content, tags)
+INSERT INTO posts (id, user_id, title, content, tags, created_at, updated_at)
 VALUES
     (
         'db5d4c6c-15d5-4555-89ad-555c7f0e4cf9',
         '50b466de-2de4-4e40-bdec-08270f23a8c8',
         'Clark First Post',
         'The first post by Clark Kent',
-        '{clark-kent, first}'
+        '{clark-kent, first}',
+        '2025-07-21 09:28:56.076637 +00:00',
+        '2025-07-21 09:28:56.076637 +00:00'
     ),
     (
         'fc892bcd-bada-4273-94f5-fdd11ae8fd25',
         '50b466de-2de4-4e40-bdec-08270f23a8c8',
         'Clark Second Post',
         'The second post by Clark Kent',
-        '{clark-kent, second}'
+        '{clark-kent, second}',
+        '2025-07-22 09:28:56.076637 +00:00',
+        '2025-07-22 09:28:56.076637 +00:00'
+    ),
+    (
+        'aad34d56-4ebc-4718-8d1f-0a5ce46b6538',
+        '50b466de-2de4-4e40-bdec-08270f23a8c8',
+        'Clark Third Post',
+        'The third post by Clark Kent',
+        '{clark-kent, third}',
+        '2025-07-24 09:28:56.076637 +00:00',
+        '2025-07-24 09:28:56.076637 +00:00'
+    ),
+    (
+        '10ece9fc-f2a6-40a1-a142-036b8ee3bc5e',
+        '50b466de-2de4-4e40-bdec-08270f23a8c8',
+        'Clark Fourth Post',
+        'The fourth post by Clark Kent',
+        '{clark-kent, fourth}',
+        '2025-07-24 09:28:56.076637 +00:00',
+        '2025-07-24 09:28:56.076637 +00:00'
     ),
     (
         '8529e9cb-b30e-4f74-aed8-7469bb2de48c',
         '4c176d2e-787f-44c0-a578-c5c6d15503bb',
         'Bruce First Post',
         'The first post by Bruce Wayne',
-        '{bruce-wayne, first}'
+        '{bruce-wayne, first}',
+        '2025-07-21 09:28:56.076637 +00:00',
+        '2025-07-21 09:28:56.076637 +00:00'
     ),
     (
         '203fb9dd-8f28-470d-a16e-715b9f9e2468',
         '4c176d2e-787f-44c0-a578-c5c6d15503bb',
         'Bruce Second Post',
         'The second post by Bruce Wayne',
-        '{bruce-wayne, second}'
+        '{bruce-wayne, second}',
+        '2025-07-22 09:28:56.076637 +00:00',
+        '2025-07-22 09:28:56.076637 +00:00'
+    ),
+    (
+        '11787491-4564-417f-bde2-ad144171d47d',
+        '4c176d2e-787f-44c0-a578-c5c6d15503bb',
+        'Bruce Third Post',
+        'The third post by Bruce Wayne',
+        '{bruce-wayne, third}',
+        '2025-07-22 09:28:56.076637 +00:00',
+        '2025-07-22 09:28:56.076637 +00:00'
     ),
     (
         '07112266-83d1-408f-bd19-ec4b80f760a0',
         'e1b4e485-fa48-4d59-8758-e7f988d5cc17',
         'Princess First Post',
         'The first post by Princess Diana',
-        '{princess-diana, first}'
+        '{princess-diana, first}',
+        '2025-07-22 09:28:56.076637 +00:00',
+        '2025-07-22 09:28:56.076637 +00:00'
     ),
     (
         '717cae2a-08dc-4db9-81e9-5544836674fc',
         'e1b4e485-fa48-4d59-8758-e7f988d5cc17',
         'Princess Second Post',
         'The second post by Princess Diana',
-        '{princess-diana, second}'
+        '{princess-diana, second}',
+        '2025-07-23 09:28:56.076637 +00:00',
+        '2025-07-23 09:28:56.076637 +00:00'
     );

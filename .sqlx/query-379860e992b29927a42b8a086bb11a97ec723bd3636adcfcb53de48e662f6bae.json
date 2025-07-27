@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT c.id AS c_id, c.user_id AS c_user_id, c.post_id AS c_post_id, c.content AS c_content, c.created_at AS c_created_at, c.updated_at AS c_updated_at,\n                       p.id AS p_id, p.user_id AS p_user_id, p.title AS p_title, p.content AS p_content, p.tags AS p_tags, p.created_at AS p_created_at, p.updated_at AS p_updated_at\n                FROM comments AS c\n                JOIN posts AS p ON p.id = c.post_id\n                WHERE c.id = $1 AND c.post_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "c_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "c_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "c_post_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "c_content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "c_created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "c_updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "p_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "p_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "p_title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "p_content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "p_tags",
+        "type_info": "VarcharArray"
+      },
+      {
+        "ordinal": 11,
+        "name": "p_created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "p_updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "379860e992b29927a42b8a086bb11a97ec723bd3636adcfcb53de48e662f6bae"
+}

@@ -1,0 +1,115 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT p.id, p.title, p.content, p.tags, p.created_at, p.updated_at,\n                       u.id AS u_id, u.name AS u_name, u.email AS u_email, r.name AS \"role: RoleType\", u.password AS u_pass, u.is_verified AS u_is_verified, u.created_at AS u_created_at, u.updated_at AS u_updated_at FROM posts AS p\n                JOIN users AS u ON u.id = p.user_id\n                JOIN roles AS r ON r.id = u.role_id\n                WHERE p.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "tags",
+        "type_info": "VarcharArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "u_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "u_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "u_email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "role: RoleType",
+        "type_info": {
+          "Custom": {
+            "name": "role_type",
+            "kind": {
+              "Enum": [
+                "admin",
+                "user"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "u_pass",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "u_is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "u_created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "u_updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0615eb573ff80eec4e6da6490b1c85380bdcfbef4ccd69c81ab713c9b86597a9"
+}

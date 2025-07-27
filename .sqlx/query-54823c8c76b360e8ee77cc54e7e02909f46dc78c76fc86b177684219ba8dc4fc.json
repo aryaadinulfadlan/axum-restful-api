@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO refresh_tokens (user_id, token, expires_at)\n                VALUES ($1, $2, $3)\n                ON CONFLICT (user_id) DO UPDATE\n                    SET token = $2, expires_at = $3, revoked = false, updated_at = NOW();\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54823c8c76b360e8ee77cc54e7e02909f46dc78c76fc86b177684219ba8dc4fc"
+}

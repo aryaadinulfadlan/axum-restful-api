@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE user_action_tokens \n                SET used_at = Now(), token = NULL, expires_at = NULL, updated_at = Now()\n                WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f85656e25b4b3a9720b8ca031ba8cce5c82c3ed6f9658797ca3d6ea73b45cb64"
+}

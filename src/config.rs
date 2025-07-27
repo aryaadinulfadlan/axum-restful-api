@@ -22,6 +22,7 @@ pub struct Config {
 
 impl Config {
     pub fn init() -> Self {
+        let port = var("PORT").expect("PORT must be set");
         let database_url = var("DATABASE_URL").expect("DATABASE_URL must be set");
         let frontend_url = var("FRONTEND_URL").expect("FRONTEND_URL must be set");
         let jwt_secret = var("JWT_SECRET_KEY").expect("JWT_SECRET_KEY must be set");
@@ -38,7 +39,7 @@ impl Config {
         let rate_limiter_max = var("RATE_LIMITER_MAX").expect("RATE_LIMITER_MAX must be set");
         let rate_limiter_duration = var("RATE_LIMITER_DURATION").expect("RATE_LIMITER_DURATION must be set");
         Self {
-            port: 4000,
+            port: port.parse::<u16>().unwrap(),
             database_url,
             frontend_url,
             jwt_secret,
