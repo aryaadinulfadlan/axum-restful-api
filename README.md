@@ -14,6 +14,7 @@
 A scalable and modular RESTful API built with Rust using Axum, PostgreSql, Redis, and Email Verification. This application demonstrates CRUD functionality and follows best practices for structuring Rust web applications. It includes User Authentication using Refresh Token and Access Token mechanism, and User Authorization using Role Permission pattern.
 
 ## 🧱 Database Schema
+
 See the `migrations/` directory for table definitions and sample data. The database structure is illustrated in the ERD:
 ![ERD](./ERD.png)
 ---
@@ -36,19 +37,19 @@ See the `migrations/` directory for table definitions and sample data. The datab
 
 ## 🛠️ Tech Stack
 This project uses these following main technologies:
-- **Rust** (`https://github.com/rust-lang/rust`) — Main programming language.
-- **Tokio** (`https://github.com/tokio-rs/tokio`) — Runtime for asynchronous Rust application.
-- **Axum** (`https://github.com/tokio-rs/axum`) — Web service framework.
-- **PostgreSQL** (`https://github.com/postgres/postgres`) — Relational database.
-- **SQLX** (`https://github.com/launchbadge/sqlx`) — The async SQL toolkit for Rust.
-- **Redis** (`https://github.com/redis/redis`) — In-Memory database.
-- **Dockerfile & Docker Compose** — For containerizing deployment.
+- [Rust](https://github.com/rust-lang/rust) — Main programming language.
+- [Tokio](https://github.com/tokio-rs/tokio) — Runtime for asynchronous Rust application.
+- [Axum](https://github.com/tokio-rs/axum) — Web service framework.
+- [PostgreSQL](https://github.com/postgres/postgres) — Relational database.
+- [SQLX](https://github.com/launchbadge/sqlx) — The async SQL toolkit for Rust.
+- [Redis](https://github.com/redis/redis`) — In-Memory database.
+- Dockerfile & Docker Compose — For containerizing deployment.
 ---
 
 ## 🧰 How to Run the Application
 There are two ways to run this application: using Docker (recommended for easy setup) or manually running it on your local machine. Choose one based on your preference.
 
-#### 📦 Option 1: Run with Docker (Recommended)
+### 📦 Option 1: Run with Docker (Recommended)
 > This is the easiest way to get the app running. It uses Docker and Docker Compose to set up everything automatically.
 > 
 **1. Please ensure Docker is installed** on your machine.
@@ -74,7 +75,7 @@ $ docker-compose up --build
 ```
 **5. You are all set. Feel free to access any of the available endpoints using Postman or curl to the main endpoint URL: http://localhost:4000/api/**
 
-#### 📦 Option 2: Run Locally (Without Docker)
+### 📦 Option 2: Run Locally (Without Docker)
 > If you prefer running the application manually without Docker, follow these steps. Ensure you have **Rust v1.88.0**, **PostgreSQL v16.4**, **SQLX-CLI v0.8.6**, and **Redis v7.2.8** installed on your machine.
 
 **1. Clone the repository**:
