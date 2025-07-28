@@ -61,7 +61,7 @@ services:
     ports:
       - "4000:4000"
     env_file:
-      - .env
+      - .env.example
     environment:
       DATABASE_URL: postgres://postgres:root@axum_postgres:5432/axum_restful
       REDIS_URL: redis://axum_redis:6379

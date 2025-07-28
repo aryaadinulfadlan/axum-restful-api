@@ -112,7 +112,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"clark_kent@gmail.com\",\n    \"password\": \"clark4567\"\n}",
+							"raw": "{\n    \"email\": \"clark_kent@gmail.com\",\n    \"password\": \"clark123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -324,7 +324,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODIxNzUsImV4cCI6MTc1MzY4NTc3NSwibmJmIjoxNzUzNjgyMTc1fQ.m_Pxfromx3NCTFCkKAh9JopAG3WNGse1hNAdU2d4W5s",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTc2NjIsImV4cCI6MTc1MzcwMTI2MiwibmJmIjoxNzUzNjk3NjYyfQ.c_qbUaaNDvvvoRAk0aDzgsjUdC6V7QT9vPwQmcRwRtc",
 								"type": "text"
 							}
 						],
@@ -756,7 +756,7 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTc2NjIsImV4cCI6MTc1MzcwMTI2MiwibmJmIjoxNzUzNjk3NjYyfQ.c_qbUaaNDvvvoRAk0aDzgsjUdC6V7QT9vPwQmcRwRtc",
 								"type": "text"
 							}
 						],

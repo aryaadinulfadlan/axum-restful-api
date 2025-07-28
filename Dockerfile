@@ -12,6 +12,5 @@ RUN apt-get update && apt-get install -y libssl3 ca-certificates curl file && rm
 COPY --from=builder /app/target/release/axum-restful-api .
 COPY --from=builder /usr/local/cargo/bin/sqlx /usr/local/bin/sqlx
 COPY --from=builder /app/migrations ./migrations
-COPY --from=builder /app/.env.example .env
 ENV RUST_LOG=info
 CMD ["/app/axum-restful-api"]
