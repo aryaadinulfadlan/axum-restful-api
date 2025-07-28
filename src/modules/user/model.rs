@@ -67,7 +67,7 @@ pub trait UserRepository {
     async fn update_user(&self, user_id: &Uuid, auth_user_id: &Uuid, user: UserUpdateRequest) -> Result<User, SqlxError>;
     async fn update_user_password(&self, user_id: &Uuid, new_password: String) -> Result<User, SqlxError>;
     async fn follow_unfollow_user(&self, user_target: Uuid, user_sender: Uuid) -> Result<String, SqlxError>;
-    async fn get_user_connections(&self, user_id: Uuid, kind: FollowKind) -> Result<Vec<Connections>, SqlxError>;
+    async fn get_user_connections(&self, user_id: Uuid, kind: &FollowKind) -> Result<Vec<Connections>, SqlxError>;
     async fn delete_user(&self, user_id: Uuid) -> Result<(), SqlxError>;
 }
 
@@ -283,34 +283,34 @@ impl UserRepository for DBClient {
         if let Some(search) = user_params.search {
             if !has_where {
                 query_builder_items
-                    .push(" WHERE (name ILIKE ")
+                    .push(" WHERE (u.name ILIKE ")
                     .push_bind(format!("%{}%", search))
-                    .push(" OR email ILIKE ")
+                    .push(" OR u.email ILIKE ")
                     .push_bind(format!("%{}%", search))
                     .push(")");
                 query_builder_count
-                    .push(" WHERE (name ILIKE ")
+                    .push(" WHERE (u.name ILIKE ")
                     .push_bind(format!("%{}%", search))
-                    .push(" OR email ILIKE ")
+                    .push(" OR u.email ILIKE ")
                     .push_bind(format!("%{}%", search))
                     .push(")");
             } else {
                 query_builder_items
-                    .push(" AND (name ILIKE ")
+                    .push(" AND (u.name ILIKE ")
                     .push_bind(format!("%{}%", search))
-                    .push(" OR email ILIKE ")
+                    .push(" OR u.email ILIKE ")
                     .push_bind(format!("%{}%", search))
                     .push(")");
                 query_builder_count
-                    .push(" AND (name ILIKE ")
+                    .push(" AND (u.name ILIKE ")
                     .push_bind(format!("%{}%", search))
-                    .push(" OR email ILIKE ")
+                    .push(" OR u.email ILIKE ")
                     .push_bind(format!("%{}%", search))
                     .push(")");
             }
         }
         query_builder_items
-            .push(" ORDER BY created_at ")
+            .push(" ORDER BY u.created_at ")
             .push(order_by)
             .push(" LIMIT ")
             .push_bind(limit)
@@ -452,7 +452,7 @@ impl UserRepository for DBClient {
         transaction.commit().await?;
         Ok(message)
     }
-    async fn get_user_connections(&self, user_id: Uuid, kind: FollowKind) -> Result<Vec<Connections>, SqlxError> {
+    async fn get_user_connections(&self, user_id: Uuid, kind: &FollowKind) -> Result<Vec<Connections>, SqlxError> {
         let data = match kind {
             FollowKind::Following => {
                 query_as!(

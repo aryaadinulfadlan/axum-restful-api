@@ -1,4 +1,4 @@
-# Rust RESTful API with Axum, PostgreSql, Redis, and Email Verification
+# Rust RESTful API with Axum, PostgreSQL, Redis, and Email Verification
 
 - [🧠 Application Overview](#-application-overview)
 - [🧪 Database Schema](#-database-schema)
@@ -11,7 +11,7 @@
 
 ## 🧠 Application Overview
 
-A scalable and modular RESTful API built with Rust using Axum, PostgreSql, Redis, and Email Verification. This application demonstrates CRUD functionality and follows best practices for structuring Rust web applications. It includes User Authentication using Refresh Token and Access Token mechanism, and User Authorization using Role Permission pattern.
+A scalable and modular RESTful API built with Rust using Axum, PostgreSQL, Redis, and Email Verification. This application demonstrates CRUD functionality and follows best practices for structuring Rust web applications. It includes User Authentication using Refresh Token and Access Token mechanism, and User Authorization using Role Permission pattern.
 
 ## 🧱 Database Schema
 
@@ -26,7 +26,7 @@ See the `migrations/` directory for table definitions and sample data. The datab
 - Sending email when user register, reset password, and "welcome" stage.
 - Combining Refresh Token + Access Token for better Authentication mechanism.
 - Role Permission approach for User Authorization mechanism.
-- Axum as web service framework. 
+- Axum as a web service framework.
 - PostgreSQL as relational database.
 - Caching data using Redis (In-Memory database).
 - SQLX as the async SQL toolkit for Rust database interaction.
@@ -39,7 +39,7 @@ See the `migrations/` directory for table definitions and sample data. The datab
 This project uses these following main technologies:
 - [Rust](https://github.com/rust-lang/rust) — Main programming language.
 - [Tokio](https://github.com/tokio-rs/tokio) — Runtime for asynchronous Rust application.
-- [Axum](https://github.com/tokio-rs/axum) — Web service framework.
+- [Axum](https://github.com/tokio-rs/axum) — Rust Web service framework.
 - [PostgreSQL](https://github.com/postgres/postgres) — Relational database.
 - [SQLX](https://github.com/launchbadge/sqlx) — The async SQL toolkit for Rust.
 - [Redis](https://github.com/redis/redis`) — In-Memory database.
@@ -51,7 +51,7 @@ There are two ways to run this application: using Docker (recommended for easy s
 
 ### 📦 Option 1: Run with Docker (Recommended)
 > This is the easiest way to get the app running. It uses Docker and Docker Compose to set up everything automatically.
-> 
+
 **1. Please ensure Docker is installed** on your machine.
 
 **2. Clone the repository**:
@@ -101,6 +101,7 @@ If you don't setup these env variable, some feature is not enabled: **Sign Up an
 $ cargo install sqlx-cli --no-default-features --features postgres
 ```
 **5. Adjust the database URL in the `.env `file to match your own**
+
 **6. Create a database:**
 ```bash
 $ sqlx database create
@@ -143,14 +144,14 @@ This application implements **role-based access control** with two user types:
 Each user type has specific access rights to certain API endpoints. Regular users have **limited access** to the system. They are allowed to access only specific endpoints. Any attempt to access restricted endpoints will return a **403 Forbidden** response. Admin users have **full access** to all endpoints, including all the regular user endpoints.
 Here are the accounts you can use to log in to this application:
 - **Princess Diana (Admin User):**
-    - Email: `princess_diana@gmail.com`
-    - Password: `diana123`
+  - Email: `princess_diana@gmail.com`
+  - Password: `diana123`
 - **Clark Kent (Regular User):**
-    - Email: `clark_kent@gmail.com`
-    - Password: `clark123`
+  - Email: `clark_kent@gmail.com`
+  - Password: `clark123`
 - **Bruce Wayne (Regular User):**
-    - Email: `bruce_wayne@gmail.com`
-    - Password: `bruce123`
+  - Email: `bruce_wayne@gmail.com`
+  - Password: `bruce123`
 
 ## 📌 API Documentation
 Please see the `postman_collection.json` file for endpoint definitions and sample data.

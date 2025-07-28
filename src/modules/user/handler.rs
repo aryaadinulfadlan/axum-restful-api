@@ -102,6 +102,7 @@ async fn user_update(
     body.validate().map_err(FieldError::populate_errors)?;
     let updated_user = app_state.db_client.update_user(&user_id, &user_auth.user.id, body).await
         .map_err(map_sqlx_error)?;
+    let _ = app_state.redis_client.set_user(&updated_user, app_state.env.jwt_max_age as u64).await;
     Ok(
         SuccessResponse::new("Successfully updating user data.", Some(updated_user))
     )
@@ -119,10 +120,11 @@ async fn user_change_password(
     }
     let hash_password = password::hash(&body.new_password)
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
-    app_state.db_client.update_user_password(&user_auth.user.id, hash_password).await
+    let updated_user_password = app_state.db_client.update_user_password(&user_auth.user.id, hash_password).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+    let _ = app_state.redis_client.set_user(&updated_user_password, app_state.env.jwt_max_age as u64).await;
     Ok(
-        SuccessResponse::<()>::new("Password updated successfully, please login.", None)
+        SuccessResponse::<()>::new("Password updated successfully.", None)
     )
 }
 async fn user_follow_unfollow(
@@ -153,13 +155,15 @@ async fn user_connections(
     req: Request,
 ) -> HttpResult<impl IntoResponse> {
     let path = req.uri().path().rsplit('/').next().unwrap_or("");
+    let kind = FollowKind::from_str(path).unwrap_or(FollowKind::Following);
     user_by_id(&user_id, app_state.clone()).await?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
-    let result = app_state.db_client.get_user_connections(user_id, FollowKind::from_str(path).unwrap_or(FollowKind::Following)).await
+    let result = app_state.db_client.get_user_connections(user_id, &kind).await
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
-    Ok(
-        SuccessResponse::new("List of user connections.", Some(result))
-    )
+    match kind {
+        FollowKind::Following => Ok(SuccessResponse::new("List of user's following.", Some(result))),
+        FollowKind::Followers => Ok(SuccessResponse::new("List of user's followers.", Some(result)))
+    }
 }
 async fn user_delete(
     Extension(app_state): Extension<Arc<AppState>>,

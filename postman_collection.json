@@ -1,0 +1,1081 @@
+{
+	"info": {
+		"_postman_id": "4a0e421c-699d-4306-a45d-b8b93098ff9e",
+		"name": "Axum Restful API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "8562125"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Sign Up",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Clark Kent\",\n    \"email\": \"clark_kent@gmail.com\",\n    \"password\": \"your strong password 123\",\n    \"password_confirm\": \"your strong password 123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/auth/sign-up",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"sign-up"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Basic Auth",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic YXJ5YTphcnlhMTIz",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/auth/basic",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"basic"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Account",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/auth/verify?token=Z09qFXNgIByLEwWoBv6bTNJVPQE0e2cf",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"verify"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "Z09qFXNgIByLEwWoBv6bTNJVPQE0e2cf"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Sign In",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"clark_kent@gmail.com\",\n    \"password\": \"clark4567\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/auth/sign-in",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"sign-in"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Activation",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"clark_kent@gmail.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/auth/resend-activation",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"resend-activation"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"clark_kent@gmail.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/auth/forgot-password",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"new_password\": \"your strong password 123\",\n    \"new_password_confirm\": \"your strong password 123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/auth/reset-password?token=PeZ1vrMfzs5nJsBgwNSRyXNJsaIg71b1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"reset-password"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "PeZ1vrMfzs5nJsBgwNSRyXNJsaIg71b1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/auth/refresh",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Sign Out",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM0MTE3MDksImV4cCI6MTc1MzQxMTk0OSwibmJmIjoxNzUzNDExNzA5fQ.TYFsAALf12ycU0ntJi7ukBi6hMrlBisDT239_Vb4Bx8",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/auth/sign-out",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"auth",
+								"sign-out"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "User Self",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODIxNzUsImV4cCI6MTc1MzY4NTc3NSwibmJmIjoxNzUzNjgyMTc1fQ.m_Pxfromx3NCTFCkKAh9JopAG3WNGse1hNAdU2d4W5s",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/self",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"self"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User List",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODY2NTcsImV4cCI6MTc1MzY5MDI1NywibmJmIjoxNzUzNjg2NjU3fQ.Mwz22mCkguU4_Hz-K4xIFSCRtbdhoLAKjvpV4KLwyEs",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/users?limit=2&order_by=DESC",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "order_by",
+									"value": "DESC"
+								},
+								{
+									"key": "search",
+									"value": "ana",
+									"disabled": true
+								},
+								{
+									"key": "is_verified",
+									"value": "false",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Detail",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODY2NTcsImV4cCI6MTc1MzY5MDI1NywibmJmIjoxNzUzNjg2NjU3fQ.Mwz22mCkguU4_Hz-K4xIFSCRtbdhoLAKjvpV4KLwyEs",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/e1b4e485-fa48-4d59-8758-e7f988d5cc17",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"e1b4e485-fa48-4d59-8758-e7f988d5cc17"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Update",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODY2NTcsImV4cCI6MTc1MzY5MDI1NywibmJmIjoxNzUzNjg2NjU3fQ.Mwz22mCkguU4_Hz-K4xIFSCRtbdhoLAKjvpV4KLwyEs",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Clark Updated\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/user/50b466de-2de4-4e40-bdec-08270f23a8c8",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"50b466de-2de4-4e40-bdec-08270f23a8c8"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Change Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODY2NTcsImV4cCI6MTc1MzY5MDI1NywibmJmIjoxNzUzNjg2NjU3fQ.Mwz22mCkguU4_Hz-K4xIFSCRtbdhoLAKjvpV4KLwyEs",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"old_password\": \"clark123\",\n    \"new_password\": \"clark456\",\n    \"new_password_confirm\": \"clark456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/user/change-password",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"change-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Follow / Unfollow",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODk0NjQsImV4cCI6MTc1MzY5MzA2NCwibmJmIjoxNzUzNjg5NDY0fQ.79370T-FPhwKxEJgVWg7-6XJC-6QWDVrQmz_sxWLR4s",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/4c176d2e-787f-44c0-a578-c5c6d15503bb/follow",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"4c176d2e-787f-44c0-a578-c5c6d15503bb",
+								"follow"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Following",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODk0NjQsImV4cCI6MTc1MzY5MzA2NCwibmJmIjoxNzUzNjg5NDY0fQ.79370T-FPhwKxEJgVWg7-6XJC-6QWDVrQmz_sxWLR4s",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/e1b4e485-fa48-4d59-8758-e7f988d5cc17/following",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"e1b4e485-fa48-4d59-8758-e7f988d5cc17",
+								"following"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Followers",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2ODk0NjQsImV4cCI6MTc1MzY5MzA2NCwibmJmIjoxNzUzNjg5NDY0fQ.79370T-FPhwKxEJgVWg7-6XJC-6QWDVrQmz_sxWLR4s",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/e1b4e485-fa48-4d59-8758-e7f988d5cc17/followers",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"e1b4e485-fa48-4d59-8758-e7f988d5cc17",
+								"followers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Delete",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/50b466de-2de4-4e40-bdec-08270f23a8c8",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"50b466de-2de4-4e40-bdec-08270f23a8c8"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Feeds",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/user/feed?limit=10",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"user",
+								"feed"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "diana",
+									"disabled": true
+								},
+								{
+									"key": "order_by",
+									"value": "DESC",
+									"disabled": true
+								},
+								{
+									"key": "since",
+									"value": "2025-07-22",
+									"disabled": true
+								},
+								{
+									"key": "until",
+									"value": "2025-07-23",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Post",
+			"item": [
+				{
+					"name": "Post Create",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Hey there\",\n    \"content\": \"I am using Rust\",\n    \"tags\": [\"rust\", \"axum\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/post",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"post"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post Detail",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/post/db5d4c6c-15d5-4555-89ad-555c7f0e4cf9",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"post",
+								"db5d4c6c-15d5-4555-89ad-555c7f0e4cf9"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post List By User",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/post/user/50b466de-2de4-4e40-bdec-08270f23a8c8",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"post",
+								"user",
+								"50b466de-2de4-4e40-bdec-08270f23a8c8"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post Update",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Title is updated\",\n    \"content\": \"Content as well\",\n    \"tags\": [\"rust\", \"axum\"]\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/post/db5d4c6c-15d5-4555-89ad-555c7f0e4cf9",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"post",
+								"db5d4c6c-15d5-4555-89ad-555c7f0e4cf9"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post Delete",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/post/db5d4c6c-15d5-4555-89ad-555c7f0e4cf9",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"post",
+								"db5d4c6c-15d5-4555-89ad-555c7f0e4cf9"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Comment",
+			"item": [
+				{
+					"name": "Comment Create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"clark is here\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/comment/8ac63781-83bd-4e64-b396-f4bada448afd",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"comment",
+								"8ac63781-83bd-4e64-b396-f4bada448afd"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Comment Detail",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/comment/db5d4c6c-15d5-4555-89ad-555c7f0e4cf9/9e9c3497-73a4-48df-b6b9-6f8bd2c91cf2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"comment",
+								"db5d4c6c-15d5-4555-89ad-555c7f0e4cf9",
+								"9e9c3497-73a4-48df-b6b9-6f8bd2c91cf2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Comment List By Post",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/comment/db5d4c6c-15d5-4555-89ad-555c7f0e4cf9",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"comment",
+								"db5d4c6c-15d5-4555-89ad-555c7f0e4cf9"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Comment Update",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"clark UPDATED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/comment/9880cc45-9c4d-43bc-90ef-c2b381269119/update",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"comment",
+								"9880cc45-9c4d-43bc-90ef-c2b381269119",
+								"update"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Comment Delete",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1MGI0NjZkZS0yZGU0LTRlNDAtYmRlYy0wODI3MGYyM2E4YzgiLCJpYXQiOjE3NTM2OTAyMDQsImV4cCI6MTc1MzY5MzgwNCwibmJmIjoxNzUzNjkwMjA0fQ.AyOjvEASexTCvrjlw8xkNfb0x7wb0KWMivT05jU9lp4",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/comment/9880cc45-9c4d-43bc-90ef-c2b381269119/delete",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"comment",
+								"9880cc45-9c4d-43bc-90ef-c2b381269119",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "PING Test",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/api/ping",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"api",
+						"ping"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
