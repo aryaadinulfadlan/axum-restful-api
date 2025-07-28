@@ -15,7 +15,7 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     networks:
       - app_network
 
@@ -31,7 +31,7 @@ services:
     ports:
       - "6380:6379"
     volumes:
-      - redisdata:/data
+      - redis_data:/data
     networks:
       - app_network
 
@@ -39,7 +39,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,8 +69,8 @@ services:
       - app_network
 
 volumes:
-  pgdata:
-  redisdata:
+  pg_data:
+  redis_data:
 
 networks:
   app_network:
