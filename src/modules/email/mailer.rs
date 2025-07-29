@@ -41,8 +41,7 @@ pub async fn send_email(
         .build();
     let result = mailer.send(&email);
     match result {
-        Ok(_) => println!("Email sent successfully!"),
-        Err(e) => println!("Failed to send email: {:?}", e),
+        Ok(_) => Ok(()),
+        Err(e) => Err(Box::new(e)),
     }
-    Ok(())
 }
