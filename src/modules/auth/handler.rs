@@ -8,7 +8,7 @@ use validator::Validate;
 use crate::{
     AppState,
     dto::{HttpResult, SuccessResponse},
-    error::{ErrorMessage, ErrorPayload, FieldError, HttpError, BodyParser, QueryParser},
+    error::{map_sqlx_error, ErrorMessage, ErrorPayload, FieldError, HttpError, BodyParser, QueryParser},
     modules::{
         auth::dto::{TokenResponse, SignUpRequest, SignInRequest, VerifyAccountQuery, ResendActivationRequest, ForgotPasswordRequest, ResetPasswordQuery, ResetPasswordRequest, SignInResponse},
         role::model::{RoleRepository, RoleType},
@@ -58,13 +58,13 @@ pub fn auth_router() -> Router {
 async fn user_by_email(email: &str, app_state: Arc<AppState>) -> Result<Option<UserResponse>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
         .get_user_by_email(email).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     Ok(user)
 }
 async fn user_action_by_token(token: &str, app_state: Arc<AppState>) -> Result<Option<UserActionToken>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
         .get_by_token(token).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     Ok(user)
 }
 async fn send_email_verification(email: &str, name: &str, verification_token: &str) -> Result<(), HttpError<ErrorPayload>> {
@@ -87,7 +87,7 @@ async fn token_handling(
     let cookie_duration = time::Duration::days(app_state.env.refresh_token_age);
     let expires_at = Utc::now() + Duration::days(app_state.env.refresh_token_age);
     app_state.db_client.refresh_token(user_id, &refresh_token, expires_at).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let cookie = Cookie::build(("refresh_token", refresh_token))
         .path("/api/auth/refresh")
         .max_age(cookie_duration)
@@ -124,7 +124,7 @@ async fn sign_up(
     let hash_password = password::hash(&body.password)
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let role_id = app_state.db_client.get_role_id_by_name(RoleType::User).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::DataNotFound.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::bad_request(ErrorMessage::DataNotFound.to_string(), None))?;
     let user_data = NewUser {
         role_id,
@@ -165,7 +165,7 @@ async fn verify_account(
         return Err(HttpError::bad_request(ErrorMessage::TokenKeyExpired.to_string(), None));
     }
     let user = app_state.db_client.verify_account(user_action.user_id, user_action.id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     send_welcome_email(&user.email, &user.name).await
         .map_err(|e| {
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
@@ -186,7 +186,7 @@ pub async fn resend_activation(
     let verification_token = generate_random_string(32);
     let expires_at = Utc::now() + Duration::hours(24);
     let updated_user_action_token = app_state.db_client.resend_activation(user.id, &verification_token, expires_at).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     send_email_verification(&user.email, &user.name, &verification_token).await?;
     Ok(SuccessResponse::new(
         "Regenerate a new token key is successfully! Please check your email to verify your account.", 
@@ -244,7 +244,7 @@ async fn forgot_password(
         expires_at,
     };
     let user_action_data = app_state.db_client.forgot_password(user.id, new_user_action).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     send_forgot_password_email(&user.email, &user.name, &verification_token).await
         .map_err(|e| {
             HttpError::server_error(ErrorMessage::FailedSendEmail(e.to_string()).to_string(), None)
@@ -268,9 +268,9 @@ async fn reset_password(
     let hash_password = password::hash(&body.new_password)
         .map_err(|e| HttpError::server_error(e.to_string(), None))?;
     let user = app_state.db_client.reset_password(user_action.user_id, user_action.id, hash_password).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let role_type = app_state.db_client.get_role_name_by_id(user.role_id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let user_response = UserResponse::get_user_response(&user, role_type);
     Ok(SuccessResponse::new("Password has been successfully changed. Please Login.", Some(user_response)))
@@ -288,7 +288,7 @@ async fn refresh_token(
         return Err(HttpError::unauthorized(ErrorMessage::TokenNotProvided.to_string(), None))
     }
     let refresh_token_data = app_state.db_client.get_refresh_token(&cookie_value).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::unauthorized(ErrorMessage::TokenInvalid.to_string(), None))?;
     if Utc::now() > refresh_token_data.expires_at || refresh_token_data.revoked {
         return Err(HttpError::unauthorized(ErrorMessage::TokenExpired.to_string(), None));
@@ -312,7 +312,7 @@ async fn sign_out(
     Extension(user_auth): Extension<AuthenticatedUser>
 ) -> HttpResult<impl IntoResponse> {
     app_state.db_client.revoke_token(user_auth.user.id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let expired_cookie = Cookie::build(("refresh_token", ""))
         .path("/api/auth/refresh")
         .max_age(time::Duration::seconds(0))

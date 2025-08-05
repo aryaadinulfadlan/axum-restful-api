@@ -42,7 +42,7 @@ async fn post_create(
         tags: body.tags,
     };
     let data = app_state.db_client.save_post(new_post).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     Ok(
         SuccessResponse::new("Successfully created a new post.", Some(data))
     )
@@ -52,7 +52,7 @@ async fn post_detail(
     PathParser(post_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
     let post_detail = app_state.db_client.get_post_detail(post_id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
         SuccessResponse::new("Getting posts detail data", Some(post_detail))
@@ -63,7 +63,7 @@ async fn post_list_by_user(
     PathParser(user_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
     let post_by_user = app_state.db_client.get_post_list_by_user(user_id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
         SuccessResponse::new("Getting list of posts by user", Some(post_by_user))

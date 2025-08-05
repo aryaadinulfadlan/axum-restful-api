@@ -57,7 +57,7 @@ pub fn user_router() -> Router {
 async fn user_by_id(user_id: &Uuid, app_state: Arc<AppState>) -> Result<Option<User>, HttpError<ErrorPayload>> {
     let user = app_state.db_client
         .get_user_by_id(user_id).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     Ok(user)
 }
 async fn user_self(
@@ -65,7 +65,7 @@ async fn user_self(
     Extension(user_auth): Extension<AuthenticatedUser>
 ) -> HttpResult<impl IntoResponse> {
     let role_type = app_state.db_client.get_role_name_by_id(user_auth.user.role_id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let user_response = UserResponse::get_user_response(&user_auth.user, role_type);
     Ok(
@@ -78,7 +78,7 @@ async fn user_list(
 ) -> HttpResult<impl IntoResponse> {
     query_params.validate().map_err(FieldError::populate_errors)?;
     let result = app_state.db_client.get_users(query_params).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let response = SuccessResponse::new("Getting user list data", Some(result));
     Ok(response)
 }
@@ -87,7 +87,7 @@ async fn user_detail(
     PathParser(user_id): PathParser<Uuid>,
 ) -> HttpResult<impl IntoResponse> {
     let user_detail = app_state.db_client.get_user_detail(&user_id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
         SuccessResponse::new("Getting user detail data", Some(user_detail))
@@ -121,7 +121,7 @@ async fn user_change_password(
     let hash_password = password::hash(&body.new_password)
         .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
     let updated_user_password = app_state.db_client.update_user_password(&user_auth.user.id, hash_password).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let _ = app_state.redis_client.set_user(&updated_user_password, app_state.env.jwt_max_age as u64).await;
     Ok(
         SuccessResponse::<()>::new("Password updated successfully.", None)
@@ -139,7 +139,7 @@ async fn user_follow_unfollow(
     user_by_id(&user_id, app_state.clone()).await?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     let message = app_state.db_client.follow_unfollow_user(user_id, sender_id).await
-        .map_err(|e| HttpError::server_error(e.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let response = FollowUnfollowResponse {
         user_target: user_id,
         user_sender: sender_id,
@@ -159,7 +159,7 @@ async fn user_connections(
     user_by_id(&user_id, app_state.clone()).await?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     let result = app_state.db_client.get_user_connections(user_id, &kind).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     match kind {
         FollowKind::Following => Ok(SuccessResponse::new("List of user's following.", Some(result))),
         FollowKind::Followers => Ok(SuccessResponse::new("List of user's followers.", Some(result)))
@@ -187,7 +187,7 @@ async fn user_feeds(
 ) -> HttpResult<impl IntoResponse> {
     query_params.validate().map_err(FieldError::populate_errors)?;
     let result = app_state.db_client.get_user_feeds(user_auth.user.id, query_params).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?;
+        .map_err(map_sqlx_error)?;
     let response = SuccessResponse::new("Getting user feeds data", Some(result));
     Ok(response)
 }

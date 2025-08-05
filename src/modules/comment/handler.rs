@@ -54,7 +54,7 @@ async fn comment_detail(
     PathParser((post_id, comment_id)): PathParser<(Uuid, Uuid)>,
 ) -> HttpResult<impl IntoResponse> {
     let comment_detail = app_state.db_client.get_comment_detail(post_id, comment_id).await
-        .map_err(|_| HttpError::server_error(ErrorMessage::ServerError.to_string(), None))?
+        .map_err(map_sqlx_error)?
         .ok_or(HttpError::not_found(ErrorMessage::DataNotFound.to_string(), None))?;
     Ok(
         SuccessResponse::new("Getting comment detail data", Some(comment_detail))
